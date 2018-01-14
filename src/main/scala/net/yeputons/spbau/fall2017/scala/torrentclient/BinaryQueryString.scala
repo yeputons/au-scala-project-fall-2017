@@ -28,8 +28,8 @@ object BinaryQueryEncoder {
     override def apply(v: String): String = v
   }
 
-  implicit object ArrayByteEncoder extends BinaryQueryEncoder[Array[Byte]] {
-    override def apply(v: Array[Byte]): String =
+  implicit object ArrayByteEncoder extends BinaryQueryEncoder[Seq[Byte]] {
+    override def apply(v: Seq[Byte]): String =
       v.map(x => f"%%${x & 0xFF}%02x").mkString
   }
 }

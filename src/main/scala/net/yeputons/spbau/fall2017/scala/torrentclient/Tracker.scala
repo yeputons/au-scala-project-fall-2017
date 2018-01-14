@@ -22,7 +22,7 @@ import org.saunter.bencode.BencodeDecoder
 import scala.concurrent.duration.{FiniteDuration, _}
 
 object Tracker {
-  type PeerId = Array[Byte]
+  type PeerId = Seq[Byte]
   type Peers = Map[PeerId, InetSocketAddress]
 
   case class GetPeers(requestId: Long)
@@ -34,7 +34,7 @@ object Tracker {
   final val DefaultRetryTimeout: FiniteDuration = 5.seconds
 
   def props(baseAnnounceUri: Uri,
-            infoHash: Array[Byte],
+            infoHash: Seq[Byte],
             httpReadTimeout: FiniteDuration = DefaultHttpReadTimeout,
             retryTimeout: FiniteDuration = DefaultRetryTimeout) =
     Props(
@@ -48,7 +48,7 @@ object Tracker {
 }
 
 class Tracker(baseAnnounceUri: Uri,
-              infoHash: Array[Byte],
+              infoHash: Seq[Byte],
               httpRequestsActorFactory: ActorRefFactory => ActorRef,
               retryTimeout: FiniteDuration = DefaultRetryTimeout)
     extends Actor

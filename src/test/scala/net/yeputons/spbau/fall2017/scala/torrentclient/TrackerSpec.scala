@@ -24,8 +24,8 @@ class TrackerSpec
     TestKit.shutdownActorSystem(system)
   }
 
-  val infoHash: Array[Byte] =
-    Array(0x00, 0x01, 0x20, 0x7F, 0xF9, 0xFF).map(_.toByte)
+  val infoHash: Seq[Byte] =
+    Seq(0x00, 0x01, 0x20, 0x7F, 0xF9, 0xFF).map(_.toByte)
   val infoHashStr = "%00%01%20%7f%f9%ff"
 
   def createTracker(uri: Uri, httpRequestActor: ActorRef): ActorRef =
