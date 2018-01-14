@@ -2,26 +2,31 @@ package net.yeputons.spbau.fall2017.scala.torrentclient
 
 import java.net.InetSocketAddress
 
-import akka.actor.{Actor, ActorLogging, Props, Timers}
-import akka.http.scaladsl.Http
+import akka.actor.{
+  Actor,
+  ActorLogging,
+  ActorRef,
+  ActorRefFactory,
+  Props,
+  Timers
+}
 import akka.http.scaladsl.model._
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
+import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{
+  HttpRequestFailed,
+  HttpRequestSucceeded,
+  MakeHttpRequest
+}
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker._
 import org.saunter.bencode.BencodeDecoder
 
-import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, _}
 
 object Tracker {
   type PeerId = Array[Byte]
   type Peers = Map[PeerId, InetSocketAddress]
 
-  sealed trait TrackerMessage
-  case class GetPeers(requestId: Long) extends TrackerMessage
-  case object UpdatePeersList extends TrackerMessage
-  case class Announced(httpResponse: HttpResponse, data: String)
-      extends TrackerMessage
-  case class AnnounceFailed(e: Throwable) extends TrackerMessage
+  case class GetPeers(requestId: Long)
+  case object UpdatePeersList
 
   case class PeersListResponse(requestId: Long, peers: Peers)
 
@@ -30,12 +35,12 @@ object Tracker {
 
   def props(baseAnnounceUri: Uri,
             infoHash: Array[Byte],
-            httpResponseReadTimeout: FiniteDuration = DefaultHttpReadTimeout,
+            httpReadTimeout: FiniteDuration = DefaultHttpReadTimeout,
             retryTimeout: FiniteDuration = DefaultRetryTimeout) =
     Props(
       new Tracker(baseAnnounceUri,
                   infoHash,
-                  httpResponseReadTimeout,
+                  _.actorOf(HttpRequestActor.props(httpReadTimeout)),
                   retryTimeout))
 
   private case object UpdateTimer
@@ -44,18 +49,12 @@ object Tracker {
 
 class Tracker(baseAnnounceUri: Uri,
               infoHash: Array[Byte],
-              httpReadTimeout: FiniteDuration = DefaultHttpReadTimeout,
+              httpRequestsActorFactory: ActorRefFactory => ActorRef,
               retryTimeout: FiniteDuration = DefaultRetryTimeout)
     extends Actor
     with ActorLogging
     with Timers {
-  final implicit val materializer: ActorMaterializer = ActorMaterializer(
-    ActorMaterializerSettings(context.system))
-  val http = Http(context.system)
-
-  def makeRequest(request: HttpRequest): Future[HttpResponse] =
-    http.singleRequest(request)
-
+  val httpRequestActor: ActorRef = httpRequestsActorFactory(context)
   var peers: Peers = Map.empty
 
   override def preStart(): Unit = {
@@ -64,34 +63,31 @@ class Tracker(baseAnnounceUri: Uri,
   }
 
   override def receive: Receive = {
-    case m: TrackerMessage =>
-      m match {
-        case GetPeers(requestId) =>
-          sender() ! PeersListResponse(requestId, peers)
-        case UpdatePeersList =>
-          updatePeersList()
-        case Announced(httpResponse, data) =>
-          if (httpResponse.status != StatusCodes.OK) {
+    case GetPeers(requestId) =>
+      sender() ! PeersListResponse(requestId, peers)
+    case UpdatePeersList =>
+      updatePeersList()
+    case HttpRequestSucceeded(_, httpResponse, data) =>
+      if (httpResponse.status != StatusCodes.OK) {
+        log.warning(
+          s"Tracker returned non-success code: ${httpResponse.status}, message of length ${data.length} " +
+            s"follows:\n$data")
+        retryAfterDelay()
+      } else {
+        BencodeDecoder.decode(data) match {
+          case BencodeDecoder.Success(result, _) =>
+            log.debug(
+              s"Got ${data.length} chars of data from the tracker, successfully decoded")
+            processTrackerResponse(result)
+          case BencodeDecoder.NoSuccess(msg, _) =>
             log.warning(
-              s"Tracker returned non-success code: ${httpResponse.status}, message of length ${data.length} " +
-                s"follows:\n$data")
+              s"Got ${data.length} chars of data from the tracker, unable to decode: $msg")
             retryAfterDelay()
-          } else {
-            BencodeDecoder.decode(data) match {
-              case BencodeDecoder.Success(result, _) =>
-                log.debug(
-                  s"Got ${data.length} chars of data from the tracker, successfully decoded")
-                processTrackerResponse(result)
-              case BencodeDecoder.NoSuccess(msg, _) =>
-                log.warning(
-                  s"Got ${data.length} chars of data from the tracker, unable to decode: $msg")
-                retryAfterDelay()
-            }
-          }
-        case AnnounceFailed(e) =>
-          log.error(e, s"Error while sending request to a tracker")
-          retryAfterDelay()
+        }
       }
+    case HttpRequestFailed(_, e) =>
+      log.error(e, s"Error while sending request to a tracker")
+      retryAfterDelay()
   }
 
   def updatePeersList(): Unit = {
@@ -103,19 +99,9 @@ class Tracker(baseAnnounceUri: Uri,
     val uri = baseAnnounceUri.copy(rawQueryString = queryString.rawQueryString)
 
     log.info(s"Sending a request to tracker at $uri")
-    import context.dispatcher
-    val f = for {
-      response <- makeRequest(HttpRequest(method = HttpMethods.GET, uri = uri))
-      entity <- response.entity.toStrict(httpReadTimeout)
-    } yield (response, entity)
-
-    import scala.util.{Failure, Success}
-    f.onComplete {
-      case Success((httpResponse, entity)) =>
-        self ! Announced(httpResponse, entity.data.toString())
-      case Failure(e) =>
-        self ! AnnounceFailed(e)
-    }
+    httpRequestActor ! MakeHttpRequest(
+      0,
+      HttpRequest(method = HttpMethods.GET, uri = uri))
   }
 
   def processTrackerResponse(data: Any): Unit = {
