@@ -22,7 +22,7 @@
 package org.saunter.bencode
 
 import scala.collection.mutable.ListBuffer
-import scala.util.parsing.combinator.{Parsers, ImplicitConversions}
+import scala.util.parsing.combinator.{ImplicitConversions, Parsers}
 
 /**
   * Most of the standard rep* methods end up using while loops at their base to
@@ -68,11 +68,7 @@ object BencodeDecoder extends ParserGenerator with ImplicitConversions {
     new scala.util.parsing.input.CharArrayReader(in.toCharArray)
   type Elem = Char
 
-  def decode(in: String): Option[Any] =
-    doc(in) match {
-      case Success(v, _) => Some(v)
-      case x => Some(x)
-    }
+  def decode(in: String): BencodeDecoder.ParseResult[Any] = doc(in)
 
   lazy val doc: Parser[Any] = number | string | list | dict
 
