@@ -15,7 +15,7 @@ object BinaryQueryString {
   def apply(rawQueryString: Option[String]): BinaryQueryString =
     rawQueryString match {
       case None    => new BinaryQueryString(Seq.empty)
-      case Some(s) => new BinaryQueryString(s.split('='))
+      case Some(s) => new BinaryQueryString(s.split('&'))
     }
 }
 
@@ -30,6 +30,6 @@ object BinaryQueryEncoder {
 
   implicit object ArrayByteEncoder extends BinaryQueryEncoder[Array[Byte]] {
     override def apply(v: Array[Byte]): String =
-      v.map(x => f"${x & 0xFF}%02x").mkString
+      v.map(x => f"%%${x & 0xFF}%02x").mkString
   }
 }
