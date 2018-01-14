@@ -106,6 +106,16 @@ class Tracker(baseAnnounceUri: Uri,
 
   def processTrackerResponse(data: Any): Unit = {
     log.debug(s"processTrackerResponse($data)")
+    val peersList: List[Any] =
+      data.asInstanceOf[Map[String, Any]]("peers").asInstanceOf[List[Any]]
+    peers = peersList.map { peer_ =>
+      val peer = peer_.asInstanceOf[Map[String, Any]]
+      val id = peer("peer id").asInstanceOf[String]
+      val host = peer("ip").asInstanceOf[String]
+      val port = peer("port").asInstanceOf[String].toInt
+      // TODO: oops, 'id' should be a binary string already; looks like Bencode library is flawed
+      id.getBytes().toSeq -> new InetSocketAddress(host, port)
+    }.toMap
   }
 
   def retryAfterDelay(): Unit = {
