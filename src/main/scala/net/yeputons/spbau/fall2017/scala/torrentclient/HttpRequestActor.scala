@@ -2,7 +2,7 @@ package net.yeputons.spbau.fall2017.scala.torrentclient
 
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{
   MakeHttpRequest,
