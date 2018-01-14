@@ -1,13 +1,13 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient
 
+import java.net.InetSocketAddress
+
 import akka.actor.{ActorRef, ActorSystem, PoisonPill, Props}
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, Uri}
+import akka.http.scaladsl.model._
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.MakeHttpRequest
-import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
-  GetPeers,
-  PeersListResponse
-}
+import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{HttpRequestSucceeded, MakeHttpRequest}
+import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{GetPeers, PeersListResponse}
+import org.saunter.bencode.BencodeEncoder
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
@@ -30,6 +30,11 @@ class TrackerSpec
 
   def createTracker(uri: Uri, httpRequestActor: ActorRef): ActorRef =
     system.actorOf(Props(new Tracker(uri, infoHash, _ => httpRequestActor)))
+
+  def successfulHttpResponse(data: Any): HttpRequestSucceeded = {
+    val dataCoded = BencodeEncoder.encode(data)
+    HttpRequestSucceeded(0, HttpResponse(entity = HttpEntity(dataCoded)), dataCoded)
+  }
 
   "The Tracker actor" must {
     "answer with no peers in the beginning" in {
@@ -61,6 +66,32 @@ class TrackerSpec
           HttpRequest(HttpMethods.GET,
                       Uri(s"/foo/bar?code=10&foo=%20&info_hash=$infoHashStr"))))
       tracker ! PoisonPill
+    }
+
+    "parses list of peers in verbose representation" in {
+      val httpRequestProbe = TestProbe()
+      val tracker = createTracker("/", httpRequestProbe.ref)
+      httpRequestProbe.expectMsgClass(1.second, classOf[MakeHttpRequest])
+      httpRequestProbe.reply(successfulHttpResponse(Map(
+        "interval" -> "10",
+        "peers" -> List(
+          Map(
+            "peer id" -> "123",
+            "ip" -> "1.example.com",
+            "port" -> "4567"
+          ),
+          Map(
+            "peer id" -> "456",
+            "ip" -> "2.example.com",
+            "port" -> "4568"
+          )
+        )
+      )))
+      tracker ! GetPeers(514)
+      expectMsg(1.second, PeersListResponse(514, Map(
+        "123".getBytes().toSeq -> new InetSocketAddress("1.example.com", 4567),
+        "456".getBytes().toSeq -> new InetSocketAddress("2.example.com", 4568),
+      )))
     }
   }
 }
