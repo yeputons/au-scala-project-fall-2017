@@ -153,4 +153,97 @@ class BencodeSpec extends WordSpecLike with Matchers {
         }
     }
   }
+
+  "BList" when {
+    "empty" must {
+      "be equal to empty Seq" in {
+        BList.empty shouldBe Seq()
+      }
+      "be equal to itself" in {
+        BList.empty shouldBe BList.empty
+      }
+    }
+    "has some data" must {
+      "be equal to a Seq with that data" in {
+        BList(BNumber(20), BNumber(30)) shouldBe Seq(BNumber(20), BNumber(30))
+      }
+      "be equal to itself" in {
+        val l = BList(BNumber(20), BNumber(30))
+        l shouldBe l
+      }
+      "provides by-index access" in {
+        val l = BList(BNumber(20), BNumber(30))
+        l(0) shouldBe BNumber(20)
+        l(1) shouldBe BNumber(30)
+      }
+      "work with map correctly" in {
+        BList(BNumber(20), BNumber(30)).map {
+          case BNumber(x) => BNumber(x + 1)
+          case x          => x
+        } shouldBe
+          BList(BNumber(21), BNumber(31))
+      }
+    }
+  }
+
+  "BDict" when {
+    "empty" must {
+      "be equal to empty Map" in {
+        BDict.empty shouldBe Map()
+      }
+      "be equal to itself" in {
+        BDict.empty shouldBe BDict.empty
+      }
+    }
+    "has some data" must {
+      "be equal to a Map with that data" in {
+        BDict.fromAsciiStringKeys(
+          "0" -> BNumber(10),
+          "1" -> BNumber(20)
+        ) shouldBe Map(
+          Seq[Byte](48) -> BNumber(10),
+          Seq[Byte](49) -> BNumber(20)
+        )
+      }
+      "be equal to itself" in {
+        val d = BDict.fromAsciiStringKeys(
+          "0" -> BNumber(10),
+          "1" -> BNumber(20)
+        )
+        d shouldBe d
+      }
+      "provides by-Seq[Byte] access" in {
+        val d = BDict(
+          Seq[Byte](0, -127) -> BNumber(10),
+          Seq[Byte](1, 127) -> BNumber(20)
+        )
+        d(Seq[Byte](0, -127)) shouldBe BNumber(10)
+        d.get(Seq[Byte](1, 127)) shouldBe Some(BNumber(20))
+        d.get(Seq[Byte](0)) shouldBe None
+      }
+      "provides by-String access" in {
+        val d = BDict.fromAsciiStringKeys(
+          "0" -> BNumber(10),
+          "1" -> BNumber(20)
+        )
+        d("0") shouldBe BNumber(10)
+        d.get("1") shouldBe Some(BNumber(20))
+        d.get("foo") shouldBe None
+      }
+      "work with map correctly" in {
+        BDict
+          .fromAsciiStringKeys(
+            "0" -> BNumber(10),
+            "1" -> BNumber(20)
+          )
+          .map {
+            case (Seq(k), BNumber(v)) =>
+              (Seq(k + 1).map(_.toByte), BNumber(v + 2))
+          } shouldBe Map(
+          Seq[Byte](49) -> BNumber(12),
+          Seq[Byte](50) -> BNumber(22)
+        )
+      }
+    }
+  }
 }
