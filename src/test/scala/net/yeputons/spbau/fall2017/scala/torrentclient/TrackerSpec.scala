@@ -57,11 +57,11 @@ class TrackerSpec
     "makes correct GET request in the beginning" in {
       val httpRequestProbe = TestProbe()
       val tracker = createTracker("/foo/bar", httpRequestProbe.ref)
-      httpRequestProbe.expectMsg(
-        1.second,
-        MakeHttpRequest(0,
-                        HttpRequest(HttpMethods.GET,
-                                    Uri(s"/foo/bar?info_hash=$infoHashStr"))))
+      val msg =
+        httpRequestProbe.expectMsgClass(1.second, classOf[MakeHttpRequest])
+      msg shouldBe MakeHttpRequest(
+        0,
+        HttpRequest(HttpMethods.GET, Uri(s"/foo/bar?info_hash=$infoHashStr")))
       tracker ! PoisonPill
     }
 
@@ -69,12 +69,12 @@ class TrackerSpec
       val httpRequestProbe = TestProbe()
       val tracker =
         createTracker("/foo/bar?code=10&foo=%20", httpRequestProbe.ref)
-      httpRequestProbe.expectMsg(
-        1.second,
-        MakeHttpRequest(
-          0,
-          HttpRequest(HttpMethods.GET,
-                      Uri(s"/foo/bar?code=10&foo=%20&info_hash=$infoHashStr"))))
+      val msg =
+        httpRequestProbe.expectMsgClass(1.second, classOf[MakeHttpRequest])
+      msg shouldBe MakeHttpRequest(
+        0,
+        HttpRequest(HttpMethods.GET,
+                    Uri(s"/foo/bar?code=10&foo=%20&info_hash=$infoHashStr")))
       tracker ! PoisonPill
     }
 
@@ -103,18 +103,15 @@ class TrackerSpec
           )
         )))
       tracker ! GetPeers(514)
-      expectMsg(
-        1.second,
-        PeersListResponse(
-          514,
-          Set(
-            Peer(InetSocketAddress.createUnresolved("1.example.com", 4567),
-                 Some("peer-123".getBytes().toSeq)),
-            Peer(InetSocketAddress.createUnresolved("2.example.com", 4568),
-                 Some("peer-456".getBytes().toSeq)),
-            Peer(InetSocketAddress.createUnresolved("3.example.com", 4569),
-                 None)
-          )
+      val msg = expectMsgClass(1.second, classOf[PeersListResponse])
+      msg shouldBe PeersListResponse(
+        514,
+        Set(
+          Peer(InetSocketAddress.createUnresolved("1.example.com", 4567),
+               Some("peer-123".getBytes().toSeq)),
+          Peer(InetSocketAddress.createUnresolved("2.example.com", 4568),
+               Some("peer-456".getBytes().toSeq)),
+          Peer(InetSocketAddress.createUnresolved("3.example.com", 4569), None)
         )
       )
     }
