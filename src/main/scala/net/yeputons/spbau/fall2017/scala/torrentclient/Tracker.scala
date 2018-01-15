@@ -109,11 +109,11 @@ class Tracker(baseAnnounceUri: Uri,
         peers = peersList.flatMap {
           case peer: BDict =>
             val id = peer.get("peer id").map(_.asInstanceOf[BByteString].value)
-            val addr = InetSocketAddress.createUnresolved(
+            val address = InetSocketAddress.createUnresolved(
               new String(peer("ip").asInstanceOf[BByteString].value.toArray,
                          "UTF-8"),
               peer("port").asInstanceOf[BNumber].value.toInt)
-            Some(Peer(addr, id))
+            Some(Peer(address, id))
           case x =>
             log.warning(
               s"Unexpected item in the 'peers' field from tracker: $x")
