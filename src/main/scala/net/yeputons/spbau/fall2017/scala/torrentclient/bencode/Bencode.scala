@@ -6,11 +6,18 @@ case class BNumber(value: Long) extends BEntry
 case class BList(value: BEntry*) extends BEntry
 case class BDict(value: Map[Seq[Byte], BEntry]) extends BEntry
 
+object BByteString {
+  def fromAsciiString(s: String): BByteString =
+    BByteString(s.getBytes("ASCII").toSeq)
+}
+
 object BList {
   def empty: BList = BList()
 }
 
 object BDict {
   def apply(entries: (Seq[Byte], BEntry)*): BDict = BDict(entries.toMap)
+  def fromAsciiStringKeys(entries: (String, BEntry)*): BDict =
+    BDict(entries.map { case (k, v) => (k.getBytes("ASCII").toSeq, v) }.toMap)
   def empty: BDict = BDict(Map.empty[Seq[Byte], BEntry])
 }
