@@ -1,6 +1,7 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient
 
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
+import java.nio.{ByteBuffer, ByteOrder}
 
 import akka.actor.{
   Actor,
@@ -18,6 +19,7 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{
 }
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker._
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
+
 import scala.concurrent.duration.{FiniteDuration, _}
 
 object Tracker {
@@ -119,6 +121,25 @@ class Tracker(baseAnnounceUri: Uri,
               s"Unexpected item in the 'peers' field from tracker: $x")
             None
         }.toSet
+      case peersList: BByteString =>
+        // BEP 23 "Tracker Returns Compact Peer Lists"
+        if (peersList.value.length % 6 != 0) {
+          log.warning(
+            s"Unexpected length in the 'peers' field from tracker: ${peersList.value.length}, is not divisible by 6")
+        }
+        peers = peersList.value
+          .grouped(6)
+          .filter(_.lengthCompare(6) == 0)
+          .map { data =>
+            val (ipBytes, portBytes) = data.splitAt(4)
+            val ip = InetAddress.getByAddress(ipBytes.toArray)
+            val port = ByteBuffer
+              .wrap(portBytes.toArray)
+              .order(ByteOrder.BIG_ENDIAN)
+              .getShort() & 0xFFFF
+            Peer(new InetSocketAddress(ip, port), None)
+          }
+          .toSet
       case x =>
         log.warning(s"Unexpected type of the 'peers' field from tracker: $x")
     }
