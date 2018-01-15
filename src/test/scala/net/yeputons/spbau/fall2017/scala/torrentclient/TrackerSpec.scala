@@ -85,13 +85,18 @@ class TrackerSpec
             "peer id" -> BByteString.fromAsciiString("peer-456"),
             "ip" -> BByteString.fromAsciiString("2.example.com"),
             "port" -> BNumber(4568)
+          ),
+          BDict.fromAsciiStringKeys(
+            "ip" -> BByteString.fromAsciiString("3.example.com"),
+            "port" -> BNumber(4569)
           )
         )
       )))
       tracker ! GetPeers(514)
       expectMsg(1.second, PeersListResponse(514, Set(
         Peer(InetSocketAddress.createUnresolved("1.example.com", 4567), Some("peer-123".getBytes().toSeq)),
-        Peer(InetSocketAddress.createUnresolved("2.example.com", 4568), Some("peer-456".getBytes().toSeq))
+        Peer(InetSocketAddress.createUnresolved("2.example.com", 4568), Some("peer-456".getBytes().toSeq)),
+        Peer(InetSocketAddress.createUnresolved("3.example.com", 4569), None)
       )))
     }
   }
