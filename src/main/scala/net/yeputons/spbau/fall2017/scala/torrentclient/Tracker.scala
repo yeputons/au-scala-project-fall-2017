@@ -17,8 +17,7 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{
   MakeHttpRequest
 }
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker._
-import org.saunter.bencode.BencodeDecoder
-
+import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 import scala.concurrent.duration.{FiniteDuration, _}
 
 object Tracker {
@@ -74,12 +73,12 @@ class Tracker(baseAnnounceUri: Uri,
             s"follows:\n$data")
         retryAfterDelay()
       } else {
-        BencodeDecoder.decode(data) match {
-          case BencodeDecoder.Success(result, _) =>
+        BencodeDecoder(data) match {
+          case Right(result) =>
             log.debug(
               s"Got ${data.length} chars of data from the tracker, successfully decoded")
             processTrackerResponse(result)
-          case BencodeDecoder.NoSuccess(msg, _) =>
+          case Left(msg) =>
             log.warning(
               s"Got ${data.length} chars of data from the tracker, unable to decode: $msg")
             retryAfterDelay()
@@ -104,17 +103,21 @@ class Tracker(baseAnnounceUri: Uri,
       HttpRequest(method = HttpMethods.GET, uri = uri))
   }
 
-  def processTrackerResponse(data: Any): Unit = {
+  def processTrackerResponse(data: BEntry): Unit = {
     log.debug(s"processTrackerResponse($data)")
-    val peersList: List[Any] =
-      data.asInstanceOf[Map[String, Any]]("peers").asInstanceOf[List[Any]]
-    peers = peersList.map { peer_ =>
-      val peer = peer_.asInstanceOf[Map[String, Any]]
-      val id = peer("peer id").asInstanceOf[String]
-      val host = peer("ip").asInstanceOf[String]
-      val port = peer("port").asInstanceOf[String].toInt
-      // TODO: oops, 'id' should be a binary string already; looks like Bencode library is flawed
-      id.getBytes().toSeq -> new InetSocketAddress(host, port)
+    val peersList =
+      data.asInstanceOf[BDict]("peers".getBytes().toSeq).asInstanceOf[BList]
+    peers = peersList.flatMap {
+      case peer: BDict =>
+        val id = peer("peer id").asInstanceOf[BByteString].value
+        val host = peer("ip").asInstanceOf[BByteString].value
+        val port = peer("port").asInstanceOf[BNumber].value.toInt
+        Some(
+          id -> new InetSocketAddress(new String(host.toArray, "UTF-8"), port)
+        )
+      case x =>
+        log.warning(s"Unexpected item in the 'peers' field from tracker: $x")
+        None
     }.toMap
   }
 
