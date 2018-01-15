@@ -4,10 +4,11 @@ import akka.actor.{Actor, ActorLogging, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
+import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{
-  MakeHttpRequest,
   HttpRequestFailed,
-  HttpRequestSucceeded
+  HttpRequestSucceeded,
+  MakeHttpRequest
 }
 
 import scala.concurrent.duration.FiniteDuration
@@ -17,7 +18,7 @@ object HttpRequestActor {
   case class MakeHttpRequest(requestId: Long, request: HttpRequest)
   case class HttpRequestSucceeded(requestId: Long,
                                   response: HttpResponse,
-                                  data: String)
+                                  data: ByteString)
   case class HttpRequestFailed(requestId: Long, e: Throwable)
 
   def props(httpReadTimeout: FiniteDuration) =
@@ -43,7 +44,7 @@ class HttpRequestActor(httpReadTimeout: FiniteDuration)
       val s = sender()
       f.onComplete {
         case Success((response, entity)) =>
-          s ! HttpRequestSucceeded(requestId, response, entity.data.toString())
+          s ! HttpRequestSucceeded(requestId, response, entity.data)
         case Failure(e) =>
           s ! HttpRequestFailed(requestId, e)
       }
