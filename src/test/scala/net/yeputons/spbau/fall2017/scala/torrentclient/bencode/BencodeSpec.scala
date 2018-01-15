@@ -59,11 +59,11 @@ class BencodeSpec extends WordSpecLike with Matchers {
       ),
     ),
     "dicts" -> Map(
-      "empty dict" -> (BDict.empty, Seq[Byte](100, 101)),  // de
+      "empty dict" -> (BDict.empty, Seq[Byte](100, 101)), // de
       "dict of ints" -> (
         BDict(
-          Seq[Byte](97, 98) -> BNumber(1),  // ab -> 1
-          Seq[Byte](97, 97) -> BNumber(0),  // aa -> 0
+          Seq[Byte](97, 98) -> BNumber(1), // ab -> 1
+          Seq[Byte](97, 97) -> BNumber(0) // aa -> 0
         ),
         ("d" + ("2:aa" + "i0e") + ("2:ab" + "i1e") + "e").getBytes().toSeq
       ),
