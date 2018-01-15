@@ -115,5 +115,32 @@ class TrackerSpec
         )
       )
     }
+
+    // BEP 23 "Tracker Returns Compact Peer Lists"
+    "parses list of peers in compact representation" in {
+      val httpRequestProbe = TestProbe()
+      val tracker = createTracker("/", httpRequestProbe.ref)
+      httpRequestProbe.expectMsgClass(1.second, classOf[MakeHttpRequest])
+      httpRequestProbe.reply(
+        successfulHttpResponse(
+          BDict.fromAsciiStringKeys(
+            "interval" -> BNumber(10),
+            "peers" -> BByteString(
+              (Seq(127, 1, 2, 3, 0x1F, 0x90) ++
+                Seq(127, 1, 2, 3, 0x1F, 0x91) ++
+                Seq(127, 1, 2, 5, 0x1F, 0x90)).map(_.toByte)
+            )
+          )))
+      tracker ! GetPeers(514)
+      val msg = expectMsgClass(1.second, classOf[PeersListResponse])
+      msg shouldBe PeersListResponse(
+        514,
+        Set(
+          Peer(new InetSocketAddress("127.1.2.3", 8080), None),
+          Peer(new InetSocketAddress("127.1.2.3", 8081), None),
+          Peer(new InetSocketAddress("127.1.2.5", 8080), None)
+        )
+      )
+    }
   }
 }
