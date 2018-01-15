@@ -113,7 +113,7 @@ class Tracker(baseAnnounceUri: Uri,
         val host = peer("ip").asInstanceOf[BByteString].value
         val port = peer("port").asInstanceOf[BNumber].value.toInt
         Some(
-          id -> new InetSocketAddress(new String(host.toArray, "UTF-8"), port)
+          id -> InetSocketAddress.createUnresolved(new String(host.toArray, "UTF-8"), port)
         )
       case x =>
         log.warning(s"Unexpected item in the 'peers' field from tracker: $x")
