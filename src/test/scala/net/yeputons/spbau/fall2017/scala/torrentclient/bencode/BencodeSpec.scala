@@ -1,5 +1,8 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient.bencode
 
+import java.io.File
+import java.nio.file.Files
+
 import org.scalatest.{Matchers, WordSpecLike}
 
 class BencodeSpec extends WordSpecLike with Matchers {
@@ -81,8 +84,18 @@ class BencodeSpec extends WordSpecLike with Matchers {
     ),
   )
 
-  val encodesDecodedExamples: Examples[Seq[Byte]] = examples.mapValues(_.mapValues(_._2))
-  val decodesEncodedExamples: Examples[BEntry] = examples.mapValues(_.mapValues(_._1))
+  val encodesDecodedExamples: Examples[Seq[Byte]] =
+    examples.mapValues(_.mapValues(_._2)) +
+      ("real torrents" ->
+        new File(getClass.getResource("/torrents").getPath)
+          .listFiles()
+          .toSeq
+          .map { f =>
+            f.getName -> Files.readAllBytes(f.toPath).toSeq
+          }
+          .toMap)
+  val decodesEncodedExamples: Examples[BEntry] =
+    examples.mapValues(_.mapValues(_._1))
 
   "BencodeEncoder(BencodeDecoder(_))" when {
     encodesDecodedExamples.foreach {
