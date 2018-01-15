@@ -104,7 +104,8 @@ class BencodeSpec extends WordSpecLike with Matchers {
           elements.foreach {
             case (elemName, encoded) =>
               s"encodes decoded $elemName" in {
-                BencodeEncoder(BencodeDecoder(encoded)) shouldBe encoded
+                val Right(decoded) = BencodeDecoder(encoded)
+                BencodeEncoder(decoded) shouldBe encoded
               }
           }
         }
@@ -118,7 +119,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
           elements.foreach {
             case (elemName, decoded) =>
               s"decodes encoded $elemName" in {
-                BencodeDecoder(BencodeEncoder(decoded)) shouldBe decoded
+                BencodeDecoder(BencodeEncoder(decoded)) shouldBe Right(decoded)
               }
           }
         }
@@ -146,7 +147,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
           elements.foreach {
             case (elemName, (decoded, encoded)) =>
               s"work with $elemName" in {
-                BencodeDecoder(encoded) shouldBe decoded
+                BencodeDecoder(encoded) shouldBe Right(decoded)
               }
           }
         }
