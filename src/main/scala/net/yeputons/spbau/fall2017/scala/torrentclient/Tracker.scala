@@ -104,20 +104,24 @@ class Tracker(baseAnnounceUri: Uri,
 
   def processTrackerResponse(data: BEntry): Unit = {
     log.debug(s"processTrackerResponse($data)")
-    val peersList =
-      data.asInstanceOf[BDict]("peers".getBytes().toSeq).asInstanceOf[BList]
-    peers = peersList.flatMap {
-      case peer: BDict =>
-        val id = peer.get("peer id").map(_.asInstanceOf[BByteString].value)
-        val host = peer("ip").asInstanceOf[BByteString].value
-        val port = peer("port").asInstanceOf[BNumber].value.toInt
-        Some(
-          Peer(InetSocketAddress.createUnresolved(new String(host.toArray, "UTF-8"), port), id)
-        )
+    data.asInstanceOf[BDict]("peers".getBytes().toSeq) match {
+      case peersList: BList =>
+        peers = peersList.flatMap {
+          case peer: BDict =>
+            val id = peer.get("peer id").map(_.asInstanceOf[BByteString].value)
+            val addr = InetSocketAddress.createUnresolved(
+              new String(peer("ip").asInstanceOf[BByteString].value.toArray,
+                         "UTF-8"),
+              peer("port").asInstanceOf[BNumber].value.toInt)
+            Some(Peer(addr, id))
+          case x =>
+            log.warning(
+              s"Unexpected item in the 'peers' field from tracker: $x")
+            None
+        }.toSet
       case x =>
-        log.warning(s"Unexpected item in the 'peers' field from tracker: $x")
-        None
-    }.toSet
+        log.warning(s"Unexpected type of the 'peers' field from tracker: $x")
+    }
   }
 
   def retryAfterDelay(): Unit = {
