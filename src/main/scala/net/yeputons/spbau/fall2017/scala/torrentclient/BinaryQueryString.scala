@@ -25,11 +25,12 @@ trait BinaryQueryEncoder[-T] {
 
 object BinaryQueryEncoder {
   implicit object StringEncoder extends BinaryQueryEncoder[String] {
-    override def apply(v: String): String = v
+    override def apply(v: String): String =
+      java.net.URLEncoder.encode(v, "UTF-8")
   }
 
   implicit object ArrayByteEncoder extends BinaryQueryEncoder[Seq[Byte]] {
     override def apply(v: Seq[Byte]): String =
-      v.map(x => f"%%${x & 0xFF}%02x").mkString
+      v.map(x => f"%%${x & 0xFF}%02X").mkString
   }
 }
