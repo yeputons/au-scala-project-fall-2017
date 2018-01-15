@@ -21,13 +21,12 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 import scala.concurrent.duration.{FiniteDuration, _}
 
 object Tracker {
-  type PeerId = Seq[Byte]
-  type Peers = Map[PeerId, InetSocketAddress]
+  case class Peer(address: InetSocketAddress, id: Option[Seq[Byte]])
 
   case class GetPeers(requestId: Long)
   case object UpdatePeersList
 
-  case class PeersListResponse(requestId: Long, peers: Peers)
+  case class PeersListResponse(requestId: Long, peers: Set[Peer])
 
   final val DefaultHttpReadTimeout: FiniteDuration = 5.seconds
   final val DefaultRetryTimeout: FiniteDuration = 5.seconds
@@ -54,7 +53,7 @@ class Tracker(baseAnnounceUri: Uri,
     with ActorLogging
     with Timers {
   val httpRequestActor: ActorRef = httpRequestsActorFactory(context)
-  var peers: Peers = Map.empty
+  var peers: Set[Peer] = Set.empty
 
   override def preStart(): Unit = {
     super.preStart()
@@ -109,16 +108,16 @@ class Tracker(baseAnnounceUri: Uri,
       data.asInstanceOf[BDict]("peers".getBytes().toSeq).asInstanceOf[BList]
     peers = peersList.flatMap {
       case peer: BDict =>
-        val id = peer("peer id").asInstanceOf[BByteString].value
+        val id = peer.get("peer id").map(_.asInstanceOf[BByteString].value)
         val host = peer("ip").asInstanceOf[BByteString].value
         val port = peer("port").asInstanceOf[BNumber].value.toInt
         Some(
-          id -> InetSocketAddress.createUnresolved(new String(host.toArray, "UTF-8"), port)
+          Peer(InetSocketAddress.createUnresolved(new String(host.toArray, "UTF-8"), port), id)
         )
       case x =>
         log.warning(s"Unexpected item in the 'peers' field from tracker: $x")
         None
-    }.toMap
+    }.toSet
   }
 
   def retryAfterDelay(): Unit = {

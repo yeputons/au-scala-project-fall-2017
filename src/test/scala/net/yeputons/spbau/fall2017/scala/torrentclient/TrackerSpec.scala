@@ -7,7 +7,7 @@ import akka.http.scaladsl.model._
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{HttpRequestSucceeded, MakeHttpRequest}
-import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{GetPeers, PeersListResponse}
+import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{GetPeers, Peer, PeersListResponse}
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
@@ -41,7 +41,7 @@ class TrackerSpec
     "answer with no peers in the beginning" in {
       val tracker = createTracker(Uri./, TestProbe().ref)
       tracker ! GetPeers(123)
-      expectMsg(1.second, PeersListResponse(123, Map.empty))
+      expectMsg(1.second, PeersListResponse(123, Set.empty))
       tracker ! PoisonPill
     }
 
@@ -89,9 +89,9 @@ class TrackerSpec
         )
       )))
       tracker ! GetPeers(514)
-      expectMsg(1.second, PeersListResponse(514, Map(
-        "peer-123".getBytes().toSeq -> InetSocketAddress.createUnresolved("1.example.com", 4567),
-        "peer-456".getBytes().toSeq -> InetSocketAddress.createUnresolved("2.example.com", 4568)
+      expectMsg(1.second, PeersListResponse(514, Set(
+        Peer(InetSocketAddress.createUnresolved("1.example.com", 4567), Some("peer-123".getBytes().toSeq)),
+        Peer(InetSocketAddress.createUnresolved("2.example.com", 4568), Some("peer-456".getBytes().toSeq))
       )))
     }
   }
