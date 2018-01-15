@@ -55,6 +55,30 @@ class BencodeSpec extends WordSpecLike with Matchers {
         "l5:helloi-100e5:helloli4e5:lleleleei100ee".getBytes().toSeq
       ),
     ),
+    "dicts" -> Map(
+      "empty dict" -> (BDict.empty, Seq[Byte](100, 101)),  // de
+      "dict of ints" -> (
+        BDict(
+          Seq[Byte](97, 98) -> BNumber(1),  // ab -> 1
+          Seq[Byte](97, 97) -> BNumber(0),  // aa -> 0
+        ),
+        ("d" + ("2:aa" + "i0e") + ("2:ab" + "i1e") + "e").getBytes().toSeq
+      ),
+      "dict of ints, text strings, and lists" -> (
+        BDict(
+          "number".getBytes().toSeq -> BNumber(-100),
+          "hello".getBytes().toSeq -> BByteString("worlde".getBytes().toSeq),
+          "m".getBytes().toSeq -> BDict(
+            "list".getBytes().toSeq -> BList(BNumber(5), BNumber(0)),
+          ),
+        ),
+        ("d" +
+          ("5:hello" + "6:worlde") +
+          ("1:m" + "d4:listli5ei0eee") +
+          ("6:number" + "i-100e") +
+          "e").getBytes().toSeq,
+      ),
+    ),
   )
 
   val encodesDecodedExamples: Examples[Seq[Byte]] = examples.mapValues(_.mapValues(_._2))
