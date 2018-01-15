@@ -9,3 +9,8 @@ case class BDict(value: Map[Seq[Byte], BEntry]) extends BEntry
 object BList {
   def empty: BList = BList()
 }
+
+object BDict {
+  def apply(entries: (Seq[Byte], BEntry)*): BDict = BDict(entries.toMap)
+  def empty: BDict = BDict(Map.empty[Seq[Byte], BEntry])
+}
