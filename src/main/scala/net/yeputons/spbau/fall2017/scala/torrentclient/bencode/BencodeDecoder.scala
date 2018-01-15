@@ -38,14 +38,14 @@ object BencodeDecoder extends Parsers {
     'i'.toByte ~> integer <~ 'e'.toByte ^^ BNumber
 
   lazy val list: Parser[BList] =
-    'l'.toByte ~> rep(entry) <~ 'e'.toByte ^^ { x => BList.apply(x:_*) }
+    'l'.toByte ~> rep(entry) <~ 'e'.toByte ^^ { x =>
+      BList.apply(x: _*)
+    }
 
   lazy val dict: Parser[BDict] =
     'd'.toByte ~> rep(dictItem) <~ 'e'.toByte ^^ (items => BDict(items.toMap))
   lazy val dictItem: Parser[(Seq[Byte], BEntry)] =
-    string.map(_.value) ~ entry ^^ { x =>
-      (x._1, x._2)
-    }
+    string.map(_.value) ~ entry ^^ { case k ~ v => (k, v) }
 
   lazy val string: Parser[BByteString] =
     stringLength >> { len =>
