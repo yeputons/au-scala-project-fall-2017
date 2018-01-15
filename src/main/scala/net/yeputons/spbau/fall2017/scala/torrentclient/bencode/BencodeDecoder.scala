@@ -51,7 +51,7 @@ object BencodeDecoder extends Parsers {
 
   lazy val string: Parser[BByteString] =
     stringLength >> { len =>
-      repN(len.toInt, elem("any", _ => true)).map(BByteString)
+      repN(len.toInt, elem("any", _ => true)).map(BByteString.apply)
     }
   lazy val stringLength: Parser[Long] =
     integer <~ ':'.toByte

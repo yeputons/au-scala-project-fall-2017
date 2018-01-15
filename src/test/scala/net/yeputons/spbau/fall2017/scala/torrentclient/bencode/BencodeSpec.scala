@@ -12,7 +12,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
     "strings" -> Map(
       "empty byte string" -> (BByteString(Seq.empty), Seq[Byte](48, 58)), // '0:'
       "text string" -> (
-        BByteString("Hello".getBytes()),
+        BByteString.fromAsciiString("Hello"),
         "5:Hello".getBytes().toSeq // '0:'
       ), {
         val data = (0 to 523).map(x => (x & 0xFF).toByte)
@@ -37,20 +37,20 @@ class BencodeSpec extends WordSpecLike with Matchers {
       "empty list" -> (BList.empty, Seq[Byte](108, 101)), // le
       "list of text strings" -> (
         BList(
-          BByteString("hi".getBytes().toSeq),
-          BByteString("atomeel".getBytes().toSeq),
-          BByteString("zoo".getBytes().toSeq),
+          BByteString.fromAsciiString("hi"),
+          BByteString.fromAsciiString("atomeel"),
+          BByteString.fromAsciiString("zoo"),
         ),
         "l2:hi7:atomeel3:zooe".getBytes().toSeq
       ),
       "list of strings, ints and lists" -> (
         BList(
-          BByteString("hello".getBytes().toSeq),
+          BByteString.fromAsciiString("hello"),
           BNumber(-100),
-          BByteString("hello".getBytes().toSeq),
+          BByteString.fromAsciiString("hello"),
           BList(
             BNumber(4),
-            BByteString("llele".getBytes().toSeq),
+            BByteString.fromAsciiString("llele"),
             BList(),
           ),
           BNumber(100),
@@ -68,11 +68,11 @@ class BencodeSpec extends WordSpecLike with Matchers {
         ("d" + ("2:aa" + "i0e") + ("2:ab" + "i1e") + "e").getBytes().toSeq
       ),
       "dict of ints, text strings, and lists" -> (
-        BDict(
-          "number".getBytes().toSeq -> BNumber(-100),
-          "hello".getBytes().toSeq -> BByteString("worlde".getBytes().toSeq),
-          "m".getBytes().toSeq -> BDict(
-            "list".getBytes().toSeq -> BList(BNumber(5), BNumber(0)),
+        BDict.fromAsciiStringKeys(
+          "number" -> BNumber(-100),
+          "hello" -> BByteString.fromAsciiString("worlde"),
+          "m" -> BDict.fromAsciiStringKeys(
+            "list" -> BList(BNumber(5), BNumber(0)),
           ),
         ),
         ("d" +
