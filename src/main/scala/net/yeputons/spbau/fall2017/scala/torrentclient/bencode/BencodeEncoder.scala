@@ -6,7 +6,7 @@ object BencodeEncoder {
   def apply(value: BEntry): Seq[Byte] = value match {
     case BByteString(str) => encode(str.length) ++ Seq(':'.toByte) ++ str
     case BNumber(num)     => Seq('i'.toByte) ++ encode(num) ++ Seq('e'.toByte)
-    case BList(list) =>
+    case BList(list @ _*) =>
       Seq('l'.toByte) ++ list.flatMap(apply) ++ Seq('e'.toByte)
     case BDict(dict) =>
       Seq('d'.toByte) ++

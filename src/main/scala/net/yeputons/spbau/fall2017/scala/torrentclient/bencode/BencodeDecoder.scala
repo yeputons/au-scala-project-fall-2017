@@ -38,7 +38,7 @@ object BencodeDecoder extends Parsers {
     'i'.toByte ~> integer <~ 'e'.toByte ^^ BNumber
 
   lazy val list: Parser[BList] =
-    'l'.toByte ~> rep(entry) <~ 'e'.toByte ^^ BList
+    'l'.toByte ~> rep(entry) <~ 'e'.toByte ^^ { x => BList.apply(x:_*) }
 
   lazy val dict: Parser[BDict] =
     'd'.toByte ~> rep(dictItem) <~ 'e'.toByte ^^ (items => BDict(items.toMap))
