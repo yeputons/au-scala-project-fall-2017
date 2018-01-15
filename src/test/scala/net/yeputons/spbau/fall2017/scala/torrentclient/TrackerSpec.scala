@@ -90,8 +90,8 @@ class TrackerSpec
       )))
       tracker ! GetPeers(514)
       expectMsg(1.second, PeersListResponse(514, Map(
-        "peer-123".getBytes().toSeq -> new InetSocketAddress("1.example.com", 4567),
-        "peer-456".getBytes().toSeq -> new InetSocketAddress("2.example.com", 4568)
+        "peer-123".getBytes().toSeq -> InetSocketAddress.createUnresolved("1.example.com", 4567),
+        "peer-456".getBytes().toSeq -> InetSocketAddress.createUnresolved("2.example.com", 4568)
       )))
     }
   }
