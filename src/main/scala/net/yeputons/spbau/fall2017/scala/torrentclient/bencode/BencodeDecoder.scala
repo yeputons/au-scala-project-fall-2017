@@ -9,12 +9,12 @@ case class BencodeDecodingException(message: String)
 object BencodeDecoder extends Parsers {
   override type Elem = Byte
 
-  def apply(value: Seq[Byte]): BEntry =
+  def apply(value: Seq[Byte]): Either[String, BEntry] =
     // value.tail may work in non-const time, which is undesirable as we
     // take .tail a lot in the reader, so let's convert it to List
     entry(new SeqByteReader(value.toList, new SeqBytePosition(value, 1))) match {
-      case Success(result, _) => result
-      case NoSuccess(msg, _)  => throw BencodeDecodingException(msg)
+      case Success(result, _) => Right(result)
+      case NoSuccess(msg, _)  => Left(msg)
     }
 
   private class SeqByteReader(s: Seq[Byte], val pos: SeqBytePosition)
