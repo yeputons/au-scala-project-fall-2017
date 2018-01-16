@@ -71,7 +71,7 @@ class Tracker(baseAnnounceUri: Uri,
       if (httpResponse.status != StatusCodes.OK) {
         log.warning(
           s"Tracker returned non-success code: ${httpResponse.status}, message of length ${data.length} " +
-            s"follows:\n$data")
+            s"follows:\n${data.map(_.toChar).mkString}")
         retryAfterDelay()
       } else {
         BencodeDecoder(data) match {
@@ -97,7 +97,11 @@ class Tracker(baseAnnounceUri: Uri,
       BinaryQueryString(baseAnnounceUri.rawQueryString) +
         ("info_hash" -> infoHash) +
         ("compact" -> "1") +
-        ("peer_id" -> "01234567890123456789") // TODO: use a better peer_id
+        ("peer_id" -> "01234567890123456789") + // TODO: use a better peer_id
+        ("port" -> "0") +
+        ("uploaded" -> "0") +
+        ("downloaded" -> "0") +
+        ("left" -> "0")
     val uri = baseAnnounceUri.copy(rawQueryString = queryString.rawQueryString)
 
     log.info(s"Sending a request to tracker at $uri")
