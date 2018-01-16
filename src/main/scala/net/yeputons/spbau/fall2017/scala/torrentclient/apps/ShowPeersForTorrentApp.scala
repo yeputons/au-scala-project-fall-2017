@@ -8,7 +8,11 @@ import akka.pattern.ask
 import akka.http.scaladsl.model.Uri
 import akka.util.Timeout
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker
-import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{GetPeers, Peer, PeersListResponse}
+import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
+  GetPeers,
+  Peer,
+  PeersListResponse
+}
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 
 import scala.concurrent.Await
@@ -41,7 +45,9 @@ object ShowPeersForTorrentApp {
       new String(
         torrentData("announce").asInstanceOf[BByteString].value.toArray,
         "UTF-8"))
-    val infoHash: Array[Byte] = MessageDigest.getInstance("SHA-1").digest(BencodeEncoder(torrentInfo).toArray)
+    val infoHash: Array[Byte] = MessageDigest
+      .getInstance("SHA-1")
+      .digest(BencodeEncoder(torrentInfo).toArray)
 
     val actorSystem = ActorSystem("show-peers-for-torrent")
     val tracker = actorSystem.actorOf(Tracker.props(baseAnnounceUri, infoHash))
