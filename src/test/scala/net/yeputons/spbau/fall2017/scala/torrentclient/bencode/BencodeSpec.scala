@@ -87,7 +87,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
   val encodesDecodedExamples: Examples[Seq[Byte]] =
     examples.mapValues(_.mapValues(_._2)) +
       ("real torrents" ->
-        new File(getClass.getResource("/torrents").getPath)
+        new File(getClass.getResource("/torrents").toURI.getPath)
           .listFiles()
           .toSeq
           .map { f =>
