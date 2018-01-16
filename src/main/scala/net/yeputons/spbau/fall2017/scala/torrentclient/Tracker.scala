@@ -96,6 +96,7 @@ class Tracker(baseAnnounceUri: Uri,
     val queryString =
       BinaryQueryString(baseAnnounceUri.rawQueryString) +
         ("info_hash" -> infoHash) +
+        ("compact" -> "1") +
         ("peer_id" -> "01234567890123456789") // TODO: use a better peer_id
     val uri = baseAnnounceUri.copy(rawQueryString = queryString.rawQueryString)
 
