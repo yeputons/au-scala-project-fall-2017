@@ -13,8 +13,8 @@ object BencodeDecoder extends Parsers {
     // value.tail may work in non-const time, which is undesirable as we
     // take .tail a lot in the reader, so let's convert it to List
     entry(new SeqByteReader(value.toList, new SeqBytePosition(value, 1))) match {
-      case Success(result, _) => Right(result)
-      case NoSuccess(msg, _)  => Left(msg)
+      case Success(result, _)   => Right(result)
+      case NoSuccess(msg, next) => Left(s"$msg at position ${next.pos}")
     }
 
   private class SeqByteReader(s: Seq[Byte], val pos: SeqBytePosition)
@@ -29,6 +29,7 @@ object BencodeDecoder extends Parsers {
   private class SeqBytePosition(s: Seq[Byte], pos: Int) extends Position {
     override def line: Int = 1
     override def column: Int = pos
+    override def toString(): String = (column + 1).toString
     override protected def lineContents: String = new String(s.toArray)
     def next: SeqBytePosition = new SeqBytePosition(s, pos + 1)
   }
