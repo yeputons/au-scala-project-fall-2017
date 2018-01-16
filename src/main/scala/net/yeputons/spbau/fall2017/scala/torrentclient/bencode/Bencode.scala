@@ -23,24 +23,34 @@ case class BList(value: BEntry*)
     }
 }
 
-case class BDict(value: Map[Seq[Byte], BEntry])
+// I've encountered a Scala bug in this class: https://github.com/scala/bug/issues/10690
+// To work around that, we check that no WrappedArray[Byte] is used as a key.
+// In particular, we cannot simply use case class---that may leak potentially invalid map to
+// a user.
+class BDict(_value: Map[Seq[Byte], BEntry])
     extends BEntry
     with Map[Seq[Byte], BEntry]
     with MapLike[Seq[Byte], BEntry, BDict] {
-  def get(key: String): Option[BEntry] = value.get(key.getBytes("ASCII"))
+  import BDict.normalizeKey
 
-  def apply(key: String): BEntry = value(key.getBytes("ASCII"))
+  val value: Map[Seq[Byte], BEntry] = _value.map { case (k, v) => (normalizeKey(k), v) }
+
+  def get(key: String): Option[BEntry] = value.get(normalizeKey(key.getBytes("ASCII")))
+
+  def apply(key: String): BEntry = value(normalizeKey(key.getBytes("ASCII")))
 
   override def empty: BDict = BDict.empty
 
-  override def +[V1 >: BEntry](kv: (Seq[Byte], V1)): Map[Seq[Byte], V1] =
-    value + kv
+  override def +[V1 >: BEntry](kv: (Seq[Byte], V1)): Map[Seq[Byte], V1] = {
+    val (k, v) = kv
+    value + ((BDict.normalizeKey(k), v))
+  }
 
-  override def get(key: Seq[Byte]): Option[BEntry] = value.get(key)
+  override def get(key: Seq[Byte]): Option[BEntry] = value.get(normalizeKey(key))
 
   override def iterator: Iterator[(Seq[Byte], BEntry)] = value.iterator
 
-  override def -(key: Seq[Byte]): BDict = BDict(value - key)
+  override def -(key: Seq[Byte]): BDict = BDict(value - normalizeKey(key))
 }
 
 object BByteString {
@@ -53,8 +63,19 @@ object BList {
 }
 
 object BDict {
-  def apply(entries: (Seq[Byte], BEntry)*): BDict = BDict(entries.toMap)
+  def apply(entries: Map[Seq[Byte], BEntry]): BDict = new BDict(entries)
+
+  def apply(entries: (Seq[Byte], BEntry)*): BDict = new BDict(entries.toMap)
+
+  def unapply(dict: BDict): Option[Map[Seq[Byte], BEntry]] = Some(dict.value)
+
   def fromAsciiStringKeys(entries: (String, BEntry)*): BDict =
     BDict(entries.map { case (k, v) => (k.getBytes("ASCII").toSeq, v) }.toMap)
+
   def empty: BDict = BDict(Map.empty[Seq[Byte], BEntry])
+
+  private def normalizeKey(key: Seq[Byte]) = key match {
+    case _: scala.collection.mutable.WrappedArray[Byte] => key.toList
+    case _ => key
+  }
 }
