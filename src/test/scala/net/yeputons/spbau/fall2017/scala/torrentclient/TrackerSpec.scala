@@ -36,6 +36,8 @@ class TrackerSpec
     Seq(0x00, 0x01, 0x20, 0x7F, 0xF9, 0xFF).map(_.toByte)
   val infoHashStr = "%00%01%20%7F%F9%FF"
 
+  val peerIdStr = "01234567890123456789"
+
   def createTracker(uri: Uri, httpRequestActor: ActorRef): ActorRef =
     system.actorOf(Props(new Tracker(uri, infoHash, _ => httpRequestActor)))
 
@@ -61,7 +63,8 @@ class TrackerSpec
         httpRequestProbe.expectMsgClass(1.second, classOf[MakeHttpRequest])
       msg shouldBe MakeHttpRequest(
         0,
-        HttpRequest(HttpMethods.GET, Uri(s"/foo/bar?info_hash=$infoHashStr")))
+        HttpRequest(HttpMethods.GET,
+                    Uri(s"/foo/bar?info_hash=$infoHashStr&peer_id=$peerIdStr")))
       tracker ! PoisonPill
     }
 
@@ -73,8 +76,10 @@ class TrackerSpec
         httpRequestProbe.expectMsgClass(1.second, classOf[MakeHttpRequest])
       msg shouldBe MakeHttpRequest(
         0,
-        HttpRequest(HttpMethods.GET,
-                    Uri(s"/foo/bar?code=10&foo=%20&info_hash=$infoHashStr")))
+        HttpRequest(
+          HttpMethods.GET,
+          Uri(
+            s"/foo/bar?code=10&foo=%20&info_hash=$infoHashStr&peer_id=$peerIdStr")))
       tracker ! PoisonPill
     }
 
