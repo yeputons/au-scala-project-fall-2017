@@ -11,7 +11,7 @@ object BencodeDecoder extends Parsers {
     * Deserializes a sequence of bytes into a Bencode entry.
     * @param value A single Bencode entry (e.g. a single list or a single dictionary), represented as bytes.
     * @return `Right(result)` if `value` was successfully and fully parsed.
-    *        Left(message)` if there was an error during parsing, that error is described in `message`.
+    *        `Left(message)` if there was an error during parsing, that error is described in `message`.
     */
   def apply(value: Seq[Byte]): Either[String, BEntry] =
     // value.tail may work in non-const time, which is undesirable as we

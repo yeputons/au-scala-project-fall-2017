@@ -72,8 +72,6 @@ object BDict {
   /**
     * Constructs a [[BDict]] using [[String]]s as keys instead of plain byte sequences.
     * As Bencode is a binary data format, non-ASCII characters are not allowed.
-    * @param entries
-    * @return
     */
   def fromAsciiStringKeys(entries: (String, BEntry)*): BDict =
     BDict(entries.map {
