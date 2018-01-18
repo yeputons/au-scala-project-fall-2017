@@ -5,6 +5,8 @@ import java.nio.file.Files
 
 import org.scalatest.{Matchers, WordSpecLike}
 
+import scala.collection.immutable.Seq
+
 class BencodeSpec extends WordSpecLike with Matchers {
   type Examples[T] = Map[String, Map[String, T]]
 
@@ -13,7 +15,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
       "empty byte string" -> (BByteString(Seq.empty), Seq[Byte](48, 58)), // '0:'
       "text string" -> (
         BByteString.fromAsciiString("Hello"),
-        "5:Hello".getBytes().toSeq // '0:'
+        "5:Hello".getBytes().to[Seq] // '0:'
       ), {
         val data = (0 to 523).map(x => (x & 0xFF).toByte)
         "all byte string" -> (BByteString(data), Seq[Byte](53, 50, 52, 58) ++ data) // '524:...'
@@ -41,7 +43,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
           BByteString.fromAsciiString("atomeel"),
           BByteString.fromAsciiString("zoo"),
         ),
-        "l2:hi7:atomeel3:zooe".getBytes().toSeq
+        "l2:hi7:atomeel3:zooe".getBytes().to[Seq]
       ),
       "list of strings, ints and lists" -> (
         BList(
@@ -55,7 +57,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
           ),
           BNumber(100),
         ),
-        "l5:helloi-100e5:helloli4e5:lleleleei100ee".getBytes().toSeq
+        "l5:helloi-100e5:helloli4e5:lleleleei100ee".getBytes().to[Seq]
       ),
     ),
     "dicts" -> Map(
@@ -65,7 +67,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
           Seq[Byte](97, 98) -> BNumber(1), // ab -> 1
           Seq[Byte](97, 97) -> BNumber(0) // aa -> 0
         ),
-        ("d" + ("2:aa" + "i0e") + ("2:ab" + "i1e") + "e").getBytes().toSeq
+        ("d" + ("2:aa" + "i0e") + ("2:ab" + "i1e") + "e").getBytes().to[Seq]
       ),
       "dict of ints, text strings, and lists" -> (
         BDict.fromAsciiStringKeys(
@@ -79,7 +81,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
           ("5:hello" + "6:worlde") +
           ("1:m" + "d4:listli5ei0eee") +
           ("6:number" + "i-100e") +
-          "e").getBytes().toSeq,
+          "e").getBytes().to[Seq],
       ),
     ),
   )
@@ -91,7 +93,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
           .listFiles()
           .toSeq
           .map { f =>
-            f.getName -> Files.readAllBytes(f.toPath).toSeq
+            f.getName -> Files.readAllBytes(f.toPath).to[Seq]
           }
           .toMap)
   val decodesEncodedExamples: Examples[BEntry] =
@@ -246,7 +248,7 @@ class BencodeSpec extends WordSpecLike with Matchers {
       }
       "accepts WrrappedArray[Byte] in apply() and get()" in {
         // https://github.com/scala/bug/issues/10690
-        val d = BDict((0 to 123).map { x => Seq(x.toByte) -> BNumber(x) }.toMap)
+        val d = BDict((0 to 123).map { x => scala.collection.Seq(x.toByte) -> BNumber(x) }.toMap)
         for (x <- 0 to 123) {
           d(Array(x.toByte).toSeq) shouldBe BNumber(x)
           d.get(Array(x.toByte).toSeq) shouldBe Some(BNumber(x))
