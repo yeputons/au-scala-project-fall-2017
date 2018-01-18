@@ -21,7 +21,13 @@ import scala.concurrent.duration.{Duration, _}
 object ShowPeersForTorrentApp {
   def main(args: Array[String]): Unit = {
     if (args.length != 1) {
-      System.err.println("Expected arguments: <path-to-torrent-file>")
+      System.err.println(
+        """
+          |Expected arguments: <path-to-torrent-file>
+          |
+          |This test app parses a .torrent file, connects to a tracker,
+          |and prints a list of peers received from it.
+        """.stripMargin)
       sys.exit(1)
     }
     val torrentBytes: Array[Byte] = Files.readAllBytes(Paths.get(args(0)))
