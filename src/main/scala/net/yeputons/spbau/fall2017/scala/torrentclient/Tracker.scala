@@ -73,8 +73,8 @@ class Tracker(baseAnnounceUri: Uri,
         ("info_hash" -> infoHash) +
         ("compact" -> "1") +
         ("peer_id" -> "01234567890123456789") + // TODO: use a better peer_id
-        ("port" -> "0") +  // TODO: specify a port where we actually listen
-        ("uploaded" -> "0") +  // TODO: send real statistics
+        ("port" -> "0") + // TODO: specify a port where we actually listen
+        ("uploaded" -> "0") + // TODO: send real statistics
         ("downloaded" -> "0") +
         ("left" -> "0")
     val uri = baseAnnounceUri.copy(rawQueryString = queryString.rawQueryString)
@@ -150,9 +150,9 @@ object Tracker {
             retryTimeout: FiniteDuration = DefaultRetryTimeout) =
     Props(
       new Tracker(baseAnnounceUri,
-        infoHash,
-        _.actorOf(HttpRequestActor.props(httpReadTimeout)),
-        retryTimeout))
+                  infoHash,
+                  _.actorOf(HttpRequestActor.props(httpReadTimeout)),
+                  retryTimeout))
 
   private case object UpdateTimer
 
