@@ -246,22 +246,6 @@ class BencodeSpec extends WordSpecLike with Matchers {
           Seq[Byte](50) -> BNumber(22)
         )
       }
-      "accepts WrrappedArray[Byte] in apply() and get()" in {
-        // https://github.com/scala/bug/issues/10690
-        val d = BDict((0 to 123).map { x => scala.collection.Seq(x.toByte) -> BNumber(x) }.toMap)
-        for (x <- 0 to 123) {
-          d(Array(x.toByte).toSeq) shouldBe BNumber(x)
-          d.get(Array(x.toByte).toSeq) shouldBe Some(BNumber(x))
-        }
-      }
-      "accepts WrrappedArray[Byte] in constructor" in {
-        // https://github.com/scala/bug/issues/10690
-        val d = BDict((0 to 123).map { x => Array(x.toByte).toSeq -> BNumber(x) }.toMap)
-        for (x <- 0 to 123) {
-          d(Seq(x.toByte)) shouldBe BNumber(x)
-          d.get(Seq(x.toByte)) shouldBe Some(BNumber(x))
-        }
-      }
     }
   }
 }
