@@ -4,9 +4,6 @@ import scala.collection.immutable
 import scala.util.parsing.combinator._
 import scala.util.parsing.input.{Position, Reader}
 
-case class BencodeDecodingException(message: String)
-    extends IllegalArgumentException(s"Unable to decode Bencode: $message")
-
 object BencodeDecoder extends Parsers {
   override type Elem = Byte
 
