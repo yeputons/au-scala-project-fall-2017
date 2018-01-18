@@ -98,8 +98,8 @@ class Tracker(baseAnnounceUri: Uri,
         ("info_hash" -> infoHash) +
         ("compact" -> "1") +
         ("peer_id" -> "01234567890123456789") + // TODO: use a better peer_id
-        ("port" -> "0") +
-        ("uploaded" -> "0") +
+        ("port" -> "0") +  // TODO: specify a port where we actually listen
+        ("uploaded" -> "0") +  // TODO: send real statistics
         ("downloaded" -> "0") +
         ("left" -> "0")
     val uri = baseAnnounceUri.copy(rawQueryString = queryString.rawQueryString)
