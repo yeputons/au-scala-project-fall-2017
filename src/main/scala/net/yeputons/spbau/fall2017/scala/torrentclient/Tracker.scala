@@ -113,7 +113,7 @@ class Tracker(baseAnnounceUri: Uri,
   def processTrackerResponse(data: BEntry): Unit = {
     log.debug(s"processTrackerResponse($data)")
     // TODO: update peers automatically after 'interval'
-    data.asInstanceOf[BDict]("peers".getBytes().toSeq) match {
+    data.asInstanceOf[BDict]("peers") match {
       case peersList: BList =>
         peers = peersList.flatMap {
           case peer: BDict =>
