@@ -21,8 +21,8 @@ class BinaryQueryString(args: Seq[String]) {
   /**
     * Appends a parameter of `key=value` form as the last parameter.
     * @param kv A tuple of `key` and `value`
-    * @param encK Escapes `key` propely for HTTP query
-    * @param encV Escapes `value` propely for HTTP query
+    * @param encK Escapes `key` properly for HTTP query
+    * @param encV Escapes `value` properly for HTTP query
     * @return A new builder with appended parameter.
     */
   def +[K, V](kv: (K, V))(implicit encK: BinaryQueryEncoder[K],
