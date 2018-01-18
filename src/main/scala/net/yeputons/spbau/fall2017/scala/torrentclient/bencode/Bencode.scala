@@ -1,6 +1,6 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient.bencode
 
-import scala.collection.{MapLike, SeqLike, mutable}
+import scala.collection.{MapLike, SeqLike, mutable, immutable}
 
 sealed trait BEntry
 case class BByteString(value: Seq[Byte]) extends BEntry
@@ -23,34 +23,23 @@ case class BList(value: BEntry*)
     }
 }
 
-// I've encountered a Scala bug in this class: https://github.com/scala/bug/issues/10690
-// To work around that, we check that no WrappedArray[Byte] is used as a key.
-// In particular, we cannot simply use case class---that may leak potentially invalid map to
-// a user.
-class BDict(_value: Map[Seq[Byte], BEntry])
+case class BDict(value: Map[immutable.Seq[Byte], BEntry])
     extends BEntry
-    with Map[Seq[Byte], BEntry]
-    with MapLike[Seq[Byte], BEntry, BDict] {
-  import BDict.normalizeKey
+    with Map[immutable.Seq[Byte], BEntry]
+    with MapLike[immutable.Seq[Byte], BEntry, BDict] {
+  def get(key: String): Option[BEntry] = value.get(key.getBytes("ASCII").to[immutable.Seq])
 
-  val value: Map[Seq[Byte], BEntry] = _value.map { case (k, v) => (normalizeKey(k), v) }
-
-  def get(key: String): Option[BEntry] = value.get(normalizeKey(key.getBytes("ASCII")))
-
-  def apply(key: String): BEntry = value(normalizeKey(key.getBytes("ASCII")))
+  def apply(key: String): BEntry = value(key.getBytes("ASCII").to[immutable.Seq])
 
   override def empty: BDict = BDict.empty
 
-  override def +[V1 >: BEntry](kv: (Seq[Byte], V1)): Map[Seq[Byte], V1] = {
-    val (k, v) = kv
-    value + ((BDict.normalizeKey(k), v))
-  }
+  override def +[V1 >: BEntry](kv: (immutable.Seq[Byte], V1)): Map[immutable.Seq[Byte], V1] = value + kv
 
-  override def get(key: Seq[Byte]): Option[BEntry] = value.get(normalizeKey(key))
+  override def get(key: immutable.Seq[Byte]): Option[BEntry] = value.get(key)
 
-  override def iterator: Iterator[(Seq[Byte], BEntry)] = value.iterator
+  override def iterator: Iterator[(immutable.Seq[Byte], BEntry)] = value.iterator
 
-  override def -(key: Seq[Byte]): BDict = BDict(value - normalizeKey(key))
+  override def -(key: immutable.Seq[Byte]): BDict = BDict(value - key)
 }
 
 object BByteString {
@@ -63,19 +52,10 @@ object BList {
 }
 
 object BDict {
-  def apply(entries: Map[Seq[Byte], BEntry]): BDict = new BDict(entries)
-
-  def apply(entries: (Seq[Byte], BEntry)*): BDict = new BDict(entries.toMap)
-
-  def unapply(dict: BDict): Option[Map[Seq[Byte], BEntry]] = Some(dict.value)
+  def apply(entries: (immutable.Seq[Byte], BEntry)*): BDict = new BDict(entries.toMap)
 
   def fromAsciiStringKeys(entries: (String, BEntry)*): BDict =
-    BDict(entries.map { case (k, v) => (k.getBytes("ASCII").toSeq, v) }.toMap)
+    BDict(entries.map { case (k, v) => (k.getBytes("ASCII").to[immutable.Seq], v) }.toMap)
 
-  def empty: BDict = BDict(Map.empty[Seq[Byte], BEntry])
-
-  private def normalizeKey(key: Seq[Byte]) = key match {
-    case _: scala.collection.mutable.WrappedArray[Byte] => key.toList
-    case _ => key
-  }
+  def empty: BDict = BDict(Map.empty[immutable.Seq[Byte], BEntry])
 }

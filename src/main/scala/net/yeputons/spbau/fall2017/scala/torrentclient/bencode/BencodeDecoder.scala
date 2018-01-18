@@ -1,5 +1,6 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient.bencode
 
+import scala.collection.immutable
 import scala.util.parsing.combinator._
 import scala.util.parsing.input.{Position, Reader}
 
@@ -47,8 +48,8 @@ object BencodeDecoder extends Parsers {
 
   lazy val dict: Parser[BDict] =
     'd'.toByte ~> rep(dictItem) <~ 'e'.toByte ^^ (items => BDict(items.toMap))
-  lazy val dictItem: Parser[(Seq[Byte], BEntry)] =
-    string.map(_.value) ~ entry ^^ { case k ~ v => (k, v) }
+  lazy val dictItem: Parser[(immutable.Seq[Byte], BEntry)] =
+    string.map(_.value) ~ entry ^^ { case k ~ v => (k.to[immutable.Seq], v) }
 
   lazy val string: Parser[BByteString] =
     stringLength >> { len =>
