@@ -22,6 +22,18 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 
 import scala.concurrent.duration.{FiniteDuration, _}
 
+/**
+  * Keeps track of peers for a specific (torrent, tracker) pair.
+  * Can provide a current list of peers at any moment. Does not preserve
+  * it between restart.s
+  * Automatically retrieves list of peers from the tracker on each (re)start.
+  *
+  * @param baseAnnounceUri Announce URI of the tracker to use, extra query parameters will be added
+  * @param infoHash 20-byte SHA1 hash idenitifying the torrent (see BEP 3)
+  * @param httpRequestsActorFactory Factory for creating a child [[HttpRequestActor]], would typically call [[ActorRefFactory.actorOf()]].
+  *                                 Another option is to provide a mock which always returns the same mocked actor.
+  * @param retryTimeout Amount of time to wait before retrying tracker request if the previous one failed
+  */
 class Tracker(baseAnnounceUri: Uri,
               infoHash: Seq[Byte],
               httpRequestsActorFactory: ActorRefFactory => ActorRef,
@@ -134,16 +146,41 @@ class Tracker(baseAnnounceUri: Uri,
 }
 
 object Tracker {
+
+  /**
+    * Holds information about a specific peer.
+    * @param address IP address and port of the peer
+    * @param id Optional 20-byte ID of the peer (see BEP 3)
+    */
   case class PeerInformation(address: InetSocketAddress, id: Option[Seq[Byte]])
 
+  /**
+    * Request for the [[Tracker]] actor to send a current list of peers
+    * @param requestId An arbitrary number to tell requests sent at different moments apart
+    */
   case class GetPeers(requestId: Long)
+
+  /**
+    * Request for the [[Tracker]] actor to update list of peers from the tracker.
+    */
   case object UpdatePeersList
 
+  /**
+    * Response for the [[GetPeers]] message.
+    * @param requestId The same `requestId` as provided in the initial [[GetPeers]] message
+    * @param peers Current list of peers
+    */
   case class PeersListResponse(requestId: Long, peers: Set[PeerInformation])
 
-  final val DefaultHttpReadTimeout: FiniteDuration = 5.seconds
-  final val DefaultRetryTimeout: FiniteDuration = 5.seconds
-
+  /**
+    * Creates [[Props]] for the [[Tracker]] actor.
+    *
+    * @param baseAnnounceUri URI of the tracker to use, extra query parameters will be added
+    * @param infoHash 20-byte SHA1 hash idenitifying the torrent (see BEP 3)
+    * @param httpReadTimeout Amount of time to allocate for reading tracker's response in full
+    * @param retryTimeout Amount of time to wait before retrying tracker request if the previous one failed
+    * @return
+    */
   def props(baseAnnounceUri: Uri,
             infoHash: Seq[Byte],
             httpReadTimeout: FiniteDuration = DefaultHttpReadTimeout,
@@ -154,6 +191,11 @@ object Tracker {
                   _.actorOf(HttpRequestActor.props(httpReadTimeout)),
                   retryTimeout))
 
-  private case object UpdateTimer
+  final val DefaultHttpReadTimeout: FiniteDuration = 5.seconds
+  final val DefaultRetryTimeout: FiniteDuration = 5.seconds
 
+  /**
+    * ID of the timer which waits before retrying retrieval of peers list of the tracker
+    */
+  private case object UpdateTimer
 }
