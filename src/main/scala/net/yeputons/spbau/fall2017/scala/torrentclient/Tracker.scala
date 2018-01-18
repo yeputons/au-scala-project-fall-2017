@@ -22,31 +22,6 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 
 import scala.concurrent.duration.{FiniteDuration, _}
 
-object Tracker {
-  case class PeerInformation(address: InetSocketAddress, id: Option[Seq[Byte]])
-
-  case class GetPeers(requestId: Long)
-  case object UpdatePeersList
-
-  case class PeersListResponse(requestId: Long, peers: Set[PeerInformation])
-
-  final val DefaultHttpReadTimeout: FiniteDuration = 5.seconds
-  final val DefaultRetryTimeout: FiniteDuration = 5.seconds
-
-  def props(baseAnnounceUri: Uri,
-            infoHash: Seq[Byte],
-            httpReadTimeout: FiniteDuration = DefaultHttpReadTimeout,
-            retryTimeout: FiniteDuration = DefaultRetryTimeout) =
-    Props(
-      new Tracker(baseAnnounceUri,
-                  infoHash,
-                  _.actorOf(HttpRequestActor.props(httpReadTimeout)),
-                  retryTimeout))
-
-  private case object UpdateTimer
-
-}
-
 class Tracker(baseAnnounceUri: Uri,
               infoHash: Seq[Byte],
               httpRequestsActorFactory: ActorRefFactory => ActorRef,
@@ -156,4 +131,29 @@ class Tracker(baseAnnounceUri: Uri,
     log.info(s"Retry after $retryTimeout")
     timers.startSingleTimer(UpdateTimer, UpdatePeersList, retryTimeout)
   }
+}
+
+object Tracker {
+  case class PeerInformation(address: InetSocketAddress, id: Option[Seq[Byte]])
+
+  case class GetPeers(requestId: Long)
+  case object UpdatePeersList
+
+  case class PeersListResponse(requestId: Long, peers: Set[PeerInformation])
+
+  final val DefaultHttpReadTimeout: FiniteDuration = 5.seconds
+  final val DefaultRetryTimeout: FiniteDuration = 5.seconds
+
+  def props(baseAnnounceUri: Uri,
+            infoHash: Seq[Byte],
+            httpReadTimeout: FiniteDuration = DefaultHttpReadTimeout,
+            retryTimeout: FiniteDuration = DefaultRetryTimeout) =
+    Props(
+      new Tracker(baseAnnounceUri,
+        infoHash,
+        _.actorOf(HttpRequestActor.props(httpReadTimeout)),
+        retryTimeout))
+
+  private case object UpdateTimer
+
 }
