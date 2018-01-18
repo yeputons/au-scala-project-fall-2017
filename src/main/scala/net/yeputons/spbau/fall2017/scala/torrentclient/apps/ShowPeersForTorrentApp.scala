@@ -40,7 +40,7 @@ object ShowPeersForTorrentApp {
       sys.exit(1)
     }
 
-    val torrentInfo = torrentData("info".getBytes()).asInstanceOf[BDict]
+    val torrentInfo = torrentData("info").asInstanceOf[BDict]
     val baseAnnounceUri = Uri(
       new String(
         torrentData("announce").asInstanceOf[BByteString].value.toArray,
