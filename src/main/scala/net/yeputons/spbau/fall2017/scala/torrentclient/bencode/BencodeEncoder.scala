@@ -3,6 +3,9 @@ package net.yeputons.spbau.fall2017.scala.torrentclient.bencode
 object BencodeEncoder {
   import scala.math.Ordering.Implicits.seqDerivedOrdering
 
+  /**
+    * Serializes a [[BEntry]] in Bencode.
+    */
   def apply(value: BEntry): Seq[Byte] = value match {
     case BByteString(str) => encode(str.length) ++ Seq(':'.toByte) ++ str
     case BNumber(num)     => Seq('i'.toByte) ++ encode(num) ++ Seq('e'.toByte)
