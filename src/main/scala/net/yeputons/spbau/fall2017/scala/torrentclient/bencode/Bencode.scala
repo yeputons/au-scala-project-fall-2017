@@ -1,8 +1,13 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient.bencode
 
+/**
+  * Defines entities which can be represented by Bencode.
+  * No (im)mutability requirements are imposed.
+  */
 import scala.collection.{MapLike, SeqLike, mutable, immutable}
 
 sealed trait BEntry
+
 case class BByteString(value: Seq[Byte]) extends BEntry
 
 case class BNumber(value: Long) extends BEntry
@@ -47,6 +52,11 @@ case class BDict(value: Map[immutable.Seq[Byte], BEntry])
 }
 
 object BByteString {
+
+  /**
+    * Constructs a [[BByteString]] from a [[String]].
+    * As Bencode is a binary data format, non-ASCII characters are not allowed.
+    */
   def fromAsciiString(s: String): BByteString =
     BByteString(s.getBytes("ASCII").toSeq)
 }
@@ -59,6 +69,12 @@ object BDict {
   def apply(entries: (immutable.Seq[Byte], BEntry)*): BDict =
     new BDict(entries.toMap)
 
+  /**
+    * Constructs a [[BDict]] using [[String]]s as keys instead of plain byte sequences.
+    * As Bencode is a binary data format, non-ASCII characters are not allowed.
+    * @param entries
+    * @return
+    */
   def fromAsciiStringKeys(entries: (String, BEntry)*): BDict =
     BDict(entries.map {
       case (k, v) => (k.getBytes("ASCII").to[immutable.Seq], v)

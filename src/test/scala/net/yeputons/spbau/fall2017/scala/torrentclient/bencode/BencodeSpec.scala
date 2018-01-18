@@ -8,8 +8,9 @@ import org.scalatest.{Matchers, WordSpecLike}
 import scala.collection.immutable.Seq
 
 class BencodeSpec extends WordSpecLike with Matchers {
-  type Examples[T] = Map[String, Map[String, T]]
+  type Examples[T] = Map[String, Map[String, T]] // "group" -> ("name" -> example)
 
+  // Each example is a tuple of (entry, the unique Bencode representation).
   val examples: Examples[(BEntry, Seq[Byte])] = Map(
     "strings" -> Map(
       "empty byte string" -> (BByteString(Seq.empty), Seq[Byte](48, 58)), // '0:'
