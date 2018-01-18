@@ -12,7 +12,7 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{
 }
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
   GetPeers,
-  Peer,
+  PeerInformation,
   PeersListResponse
 }
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
@@ -112,11 +112,11 @@ class TrackerSpec
       msg shouldBe PeersListResponse(
         514,
         Set(
-          Peer(InetSocketAddress.createUnresolved("1.example.com", 4567),
+          PeerInformation(InetSocketAddress.createUnresolved("1.example.com", 4567),
                Some("peer-123".getBytes().toSeq)),
-          Peer(InetSocketAddress.createUnresolved("2.example.com", 4568),
+          PeerInformation(InetSocketAddress.createUnresolved("2.example.com", 4568),
                Some("peer-456".getBytes().toSeq)),
-          Peer(InetSocketAddress.createUnresolved("3.example.com", 4569), None)
+          PeerInformation(InetSocketAddress.createUnresolved("3.example.com", 4569), None)
         )
       )
     }
@@ -141,9 +141,9 @@ class TrackerSpec
       msg shouldBe PeersListResponse(
         514,
         Set(
-          Peer(new InetSocketAddress("127.1.2.3", 8080), None),
-          Peer(new InetSocketAddress("127.1.2.3", 8081), None),
-          Peer(new InetSocketAddress("127.1.2.5", 8080), None)
+          PeerInformation(new InetSocketAddress("127.1.2.3", 8080), None),
+          PeerInformation(new InetSocketAddress("127.1.2.3", 8081), None),
+          PeerInformation(new InetSocketAddress("127.1.2.5", 8080), None)
         )
       )
     }

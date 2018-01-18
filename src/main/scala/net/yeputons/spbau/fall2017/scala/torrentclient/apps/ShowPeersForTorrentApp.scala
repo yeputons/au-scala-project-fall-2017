@@ -10,7 +10,7 @@ import akka.util.Timeout
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
   GetPeers,
-  Peer,
+  PeerInformation,
   PeersListResponse
 }
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
@@ -54,7 +54,7 @@ object ShowPeersForTorrentApp {
     implicit val timeout: Timeout = Timeout(5.seconds)
 
     val random = new scala.util.Random()
-    var peers = Set.empty[Peer]
+    var peers = Set.empty[PeerInformation]
     while (peers.isEmpty) {
       Thread.sleep(1000)
       val id = random.nextLong()

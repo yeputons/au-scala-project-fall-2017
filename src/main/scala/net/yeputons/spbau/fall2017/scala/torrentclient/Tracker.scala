@@ -23,12 +23,12 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 import scala.concurrent.duration.{FiniteDuration, _}
 
 object Tracker {
-  case class Peer(address: InetSocketAddress, id: Option[Seq[Byte]])
+  case class PeerInformation(address: InetSocketAddress, id: Option[Seq[Byte]])
 
   case class GetPeers(requestId: Long)
   case object UpdatePeersList
 
-  case class PeersListResponse(requestId: Long, peers: Set[Peer])
+  case class PeersListResponse(requestId: Long, peers: Set[PeerInformation])
 
   final val DefaultHttpReadTimeout: FiniteDuration = 5.seconds
   final val DefaultRetryTimeout: FiniteDuration = 5.seconds
@@ -55,7 +55,7 @@ class Tracker(baseAnnounceUri: Uri,
     with ActorLogging
     with Timers {
   val httpRequestActor: ActorRef = httpRequestsActorFactory(context)
-  var peers: Set[Peer] = Set.empty
+  var peers: Set[PeerInformation] = Set.empty
 
   override def preStart(): Unit = {
     super.preStart()
@@ -122,7 +122,7 @@ class Tracker(baseAnnounceUri: Uri,
               new String(peer("ip").asInstanceOf[BByteString].value.toArray,
                          "UTF-8"),
               peer("port").asInstanceOf[BNumber].value.toInt)
-            Some(Peer(address, id))
+            Some(PeerInformation(address, id))
           case x =>
             log.warning(
               s"Unexpected item in the 'peers' field from tracker: $x")
@@ -144,7 +144,7 @@ class Tracker(baseAnnounceUri: Uri,
               .wrap(portBytes.toArray)
               .order(ByteOrder.BIG_ENDIAN)
               .getShort() & 0xFFFF
-            Peer(new InetSocketAddress(ip, port), None)
+            PeerInformation(new InetSocketAddress(ip, port), None)
           }
           .toSet
       case x =>
