@@ -27,17 +27,21 @@ case class BDict(value: Map[immutable.Seq[Byte], BEntry])
     extends BEntry
     with Map[immutable.Seq[Byte], BEntry]
     with MapLike[immutable.Seq[Byte], BEntry, BDict] {
-  def get(key: String): Option[BEntry] = value.get(key.getBytes("ASCII").to[immutable.Seq])
+  def get(key: String): Option[BEntry] =
+    value.get(key.getBytes("ASCII").to[immutable.Seq])
 
-  def apply(key: String): BEntry = value(key.getBytes("ASCII").to[immutable.Seq])
+  def apply(key: String): BEntry =
+    value(key.getBytes("ASCII").to[immutable.Seq])
 
   override def empty: BDict = BDict.empty
 
-  override def +[V1 >: BEntry](kv: (immutable.Seq[Byte], V1)): Map[immutable.Seq[Byte], V1] = value + kv
+  override def +[V1 >: BEntry](
+      kv: (immutable.Seq[Byte], V1)): Map[immutable.Seq[Byte], V1] = value + kv
 
   override def get(key: immutable.Seq[Byte]): Option[BEntry] = value.get(key)
 
-  override def iterator: Iterator[(immutable.Seq[Byte], BEntry)] = value.iterator
+  override def iterator: Iterator[(immutable.Seq[Byte], BEntry)] =
+    value.iterator
 
   override def -(key: immutable.Seq[Byte]): BDict = BDict(value - key)
 }
@@ -52,10 +56,13 @@ object BList {
 }
 
 object BDict {
-  def apply(entries: (immutable.Seq[Byte], BEntry)*): BDict = new BDict(entries.toMap)
+  def apply(entries: (immutable.Seq[Byte], BEntry)*): BDict =
+    new BDict(entries.toMap)
 
   def fromAsciiStringKeys(entries: (String, BEntry)*): BDict =
-    BDict(entries.map { case (k, v) => (k.getBytes("ASCII").to[immutable.Seq], v) }.toMap)
+    BDict(entries.map {
+      case (k, v) => (k.getBytes("ASCII").to[immutable.Seq], v)
+    }.toMap)
 
   def empty: BDict = BDict(Map.empty[immutable.Seq[Byte], BEntry])
 }

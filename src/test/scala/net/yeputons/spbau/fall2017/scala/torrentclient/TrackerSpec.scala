@@ -63,8 +63,10 @@ class TrackerSpec
         httpRequestProbe.expectMsgClass(1.second, classOf[MakeHttpRequest])
       msg shouldBe MakeHttpRequest(
         0,
-        HttpRequest(HttpMethods.GET,
-                    Uri(s"/foo/bar?info_hash=$infoHashStr&compact=1&peer_id=$peerIdStr&port=0&uploaded=0&downloaded=0&left=0")))
+        HttpRequest(
+          HttpMethods.GET,
+          Uri(
+            s"/foo/bar?info_hash=$infoHashStr&compact=1&peer_id=$peerIdStr&port=0&uploaded=0&downloaded=0&left=0")))
       tracker ! PoisonPill
     }
 
@@ -79,7 +81,8 @@ class TrackerSpec
         HttpRequest(
           HttpMethods.GET,
           Uri(
-            s"/foo/bar?code=10&foo=%20&info_hash=$infoHashStr&compact=1&peer_id=$peerIdStr&port=0&uploaded=0&downloaded=0&left=0")))
+            s"/foo/bar?code=10&foo=%20&info_hash=$infoHashStr&compact=1&peer_id=$peerIdStr&port=0&uploaded=0&downloaded=0&left=0"))
+      )
       tracker ! PoisonPill
     }
 
@@ -112,11 +115,15 @@ class TrackerSpec
       msg shouldBe PeersListResponse(
         514,
         Set(
-          PeerInformation(InetSocketAddress.createUnresolved("1.example.com", 4567),
-               Some("peer-123".getBytes().toSeq)),
-          PeerInformation(InetSocketAddress.createUnresolved("2.example.com", 4568),
-               Some("peer-456".getBytes().toSeq)),
-          PeerInformation(InetSocketAddress.createUnresolved("3.example.com", 4569), None)
+          PeerInformation(InetSocketAddress.createUnresolved("1.example.com",
+                                                             4567),
+                          Some("peer-123".getBytes().toSeq)),
+          PeerInformation(InetSocketAddress.createUnresolved("2.example.com",
+                                                             4568),
+                          Some("peer-456".getBytes().toSeq)),
+          PeerInformation(InetSocketAddress.createUnresolved("3.example.com",
+                                                             4569),
+                          None)
         )
       )
     }
