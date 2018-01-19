@@ -31,14 +31,17 @@ class PrefixFlowSpec
     "prefix is empty" must {
       "pass data intact" in {
         val (pub, sub) = run("")
+
         pub.sendNext("hello")
         pub.sendNext("cold")
         pub.sendNext("world")
+
         sub.request(1)
         sub.expectNext("hello")
         sub.request(2)
         sub.expectNext("cold")
         sub.expectNext("world")
+
         pub.sendComplete()
         sub.expectComplete()
       }
@@ -46,8 +49,10 @@ class PrefixFlowSpec
       "pass errors intact" in {
         val (pub, sub) = run("")
         sub.request(1)
+
         pub.sendNext("hello")
         sub.expectNext("hello")
+
         val err = new Exception()
         pub.sendError(err)
         sub.expectError(err)
@@ -58,40 +63,52 @@ class PrefixFlowSpec
       "detect prefix as a single message" in {
         val (pub, sub) = run("prefix")
         sub.request(1)
+
         pub.sendNext("prefix")
         sub.expectNoMessage(100.milliseconds)
+
         pub.sendNext("message")
         sub.expectNext("message")
+
         pub.sendComplete()
         sub.expectComplete()
       }
       "detect partitioned prefix" in {
         val (pub, sub) = run("prefix")
         sub.request(1)
+
         pub.sendNext("pref")
         sub.expectNoMessage(100.milliseconds)
+
         pub.sendNext("ix")
         sub.expectNoMessage(100.milliseconds)
+
         pub.sendNext("message")
         sub.expectNext("message")
+
         pub.sendComplete()
         sub.expectComplete()
       }
       "detect prefix with a message" in {
         val (pub, sub) = run("prefix")
         sub.request(1)
+
         pub.sendNext("prefixmessage")
         sub.expectNext("message")
+
         pub.sendComplete()
         sub.expectComplete()
       }
       "detect partitioned prefix with a message" in {
         val (pub, sub) = run("prefix")
         sub.request(1)
+
         pub.sendNext("pref")
         sub.expectNoMessage(100.milliseconds)
+
         pub.sendNext("ixmessage")
         sub.expectNext("message")
+
         pub.sendComplete()
         sub.expectComplete()
       }
@@ -101,6 +118,7 @@ class PrefixFlowSpec
       "detect prefix as a single message" in {
         val (pub, sub) = run("prefix")
         sub.ensureSubscription()
+
         pub.sendNext("prefiy")
         sub.expectError(
           PrefixMismatchException[WrappedString]("prefiy", "prefix"))
@@ -108,8 +126,10 @@ class PrefixFlowSpec
       "detect partitioned prefix" in {
         val (pub, sub) = run("prefix")
         sub.ensureSubscription()
+
         pub.sendNext("prefi")
         sub.expectNoMessage(100.milliseconds)
+
         pub.sendNext("y")
         sub.expectError(
           PrefixMismatchException[WrappedString]("prefiy", "prefix"))
@@ -117,6 +137,7 @@ class PrefixFlowSpec
       "detect prefix with a message" in {
         val (pub, sub) = run("prefix")
         sub.ensureSubscription()
+
         pub.sendNext("prefiymessage")
         sub.expectError(
           PrefixMismatchException[WrappedString]("prefiy", "prefix"))
@@ -124,8 +145,10 @@ class PrefixFlowSpec
       "detect partitioned prefix with a message" in {
         val (pub, sub) = run("prefix")
         sub.ensureSubscription()
+
         pub.sendNext("pref")
         sub.expectNoMessage(100.milliseconds)
+
         pub.sendNext("iymessage")
         sub.expectError(
           PrefixMismatchException[WrappedString]("prefiy", "prefix"))
