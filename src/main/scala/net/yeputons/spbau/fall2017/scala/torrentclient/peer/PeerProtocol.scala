@@ -37,10 +37,7 @@ object PeerMessagesParsing {
 
   def apply()
     : BidiFlow[PeerMessage, ByteString, ByteString, PeerMessage, NotUsed] =
-    BidiFlow.fromFlows(
-      Flow[PeerMessage].map(encodeMessage),
-      Flow[ByteString].map(decodeMessage)
-    )
+    BidiFlow.fromFunctions(encodeMessage, decodeMessage)
 
   private implicit val byteOrder: ByteOrder = ByteOrder.BIG_ENDIAN
 
