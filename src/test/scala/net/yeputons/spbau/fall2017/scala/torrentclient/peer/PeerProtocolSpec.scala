@@ -26,8 +26,8 @@ class PeerProtocolSpec
 
     "work when looped" in {
       val loop = PeerFraming()
-        .atop(PeerHandshake(infoHash, myPeerId, otherPeerId))
-        .atop(PeerHandshake(infoHash, otherPeerId, myPeerId).reversed)
+        .atop(PeerHandshake(infoHash, myPeerId, Some(otherPeerId)))
+        .atop(PeerHandshake(infoHash, otherPeerId, Some(myPeerId)).reversed)
         .atop(PeerFraming().reversed)
         .join(Flow.fromFunction(identity))
       val (pub, sub) =
@@ -53,8 +53,8 @@ class PeerProtocolSpec
 
     "fail when looped and peer id is incorrect" in {
       val loop = PeerFraming()
-        .atop(PeerHandshake(infoHash, myPeerId, myPeerId))
-        .atop(PeerHandshake(infoHash, otherPeerId, myPeerId).reversed)
+        .atop(PeerHandshake(infoHash, myPeerId, Some(myPeerId)))
+        .atop(PeerHandshake(infoHash, otherPeerId, Some(myPeerId)).reversed)
         .atop(PeerFraming().reversed)
         .join(Flow.fromFunction(identity))
       val (pub, sub) =
@@ -86,7 +86,7 @@ class PeerProtocolSpec
       val flow
         : Flow[ByteString, ByteString, Future[immutable.Seq[ByteString]]] =
         PeerFraming()
-          .atop(PeerHandshake(infoHash, myPeerId, otherPeerId))
+          .atop(PeerHandshake(infoHash, myPeerId, Some(otherPeerId)))
           .joinMat(
             Flow.fromSinkAndSourceMat(Sink.seq[ByteString], remoteSource)(
               Keep.left))(Keep.right)
@@ -153,8 +153,12 @@ class PeerProtocolSpec
   "PeerMessagesParsing" when {
     for ((key, (message, encoded)) <- examples) {
       f"working with $key" must {
-        "encode" in { PeerMessagesParsing.decodeMessage(encoded) shouldBe message }
-        "decode" in { PeerMessagesParsing.encodeMessage(message) shouldBe encoded }
+        "encode" in {
+          PeerMessagesParsing.decodeMessage(encoded) shouldBe message
+        }
+        "decode" in {
+          PeerMessagesParsing.encodeMessage(message) shouldBe encoded
+        }
       }
     }
   }

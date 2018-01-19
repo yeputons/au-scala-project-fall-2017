@@ -25,7 +25,9 @@ object PeerMessage {
 }
 
 object PeerProtocol {
-  def apply(infoHash: ByteString, myPeerId: ByteString, otherPeerId: ByteString)
+  def apply(infoHash: ByteString,
+            myPeerId: ByteString,
+            otherPeerId: Option[ByteString])
     : BidiFlow[PeerMessage, ByteString, ByteString, PeerMessage, NotUsed] =
     PeerMessagesParsing()
       .atop(PeerFraming())
@@ -151,18 +153,25 @@ object PeerHandshake {
   private final val Header: ByteString =
     ByteString("19BitTorrent protocol") ++ ByteString(0, 0, 0, 0, 0, 0, 0, 0)
 
-  def apply(infoHash: ByteString, myPeerId: ByteString, otherPeerId: ByteString)
+  def apply(infoHash: ByteString,
+            myPeerId: ByteString,
+            otherPeerId: Option[ByteString])
     : BidiFlow[ByteString, ByteString, ByteString, ByteString, NotUsed] = {
     require(infoHash.length == 20, "infoHash should be exactly 20 bytes")
     require(myPeerId.length == 20, "myPeerId should be exactly 20 bytes")
-    require(otherPeerId.length == 20, "otherPeerId should be exactly 20 bytes")
+    otherPeerId.foreach(x =>
+      require(x.length == 20, "otherPeerId should be exactly 20 bytes"))
 
-    val myHandshake = Header ++ infoHash ++ myPeerId
-    val peerHandshake = Header ++ infoHash ++ otherPeerId
-
-    BidiFlow.fromFlows(
-      Flow[ByteString].prepend(Source.single(myHandshake)),
-      ExpectPrefixFlow[Byte, ByteString](peerHandshake)
-    )
+    val localToRemoteFlow =
+      Flow[ByteString].prepend(Source.single(Header ++ infoHash ++ myPeerId))
+    val remoteToLocalFlow =
+      otherPeerId match {
+        case Some(id) =>
+          ExpectPrefixFlow[Byte, ByteString](Header ++ infoHash ++ id)
+        case None =>
+          ExpectPrefixFlow[Byte, ByteString](Header ++ infoHash)
+            .via(TakePrefixFlow[Byte, ByteString](20).drop(1))
+      }
+    BidiFlow.fromFlows(localToRemoteFlow, remoteToLocalFlow)
   }
 }
