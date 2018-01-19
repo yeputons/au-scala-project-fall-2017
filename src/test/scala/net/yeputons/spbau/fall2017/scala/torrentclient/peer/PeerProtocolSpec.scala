@@ -67,6 +67,33 @@ class PeerProtocolSpec
       sub.expectError()
     }
 
+    "work when looped and wrong peer id is ignored from one side" in {
+      val loop = PeerFraming()
+        .atop(PeerHandshake(infoHash, myPeerId, None))
+        .atop(PeerHandshake(infoHash, otherPeerId, Some(myPeerId)).reversed)
+        .atop(PeerFraming().reversed)
+        .join(Flow.fromFunction(identity))
+      val (pub, sub) =
+        TestSource
+          .probe[ByteString]
+          .via(loop)
+          .toMat(TestSink.probe[ByteString])(Keep.both)
+          .run()
+      pub.sendNext(ByteString("hello"))
+      pub.sendNext(ByteString.empty)
+      pub.sendNext(ByteString("meow"))
+      sub.request(1)
+      sub.expectNext(ByteString("hello"))
+      sub.request(1)
+      sub.expectNext(ByteString.empty)
+      sub.request(2)
+      sub.expectNext(ByteString("meow"))
+      sub.expectNoMessage(100.milliseconds)
+
+      pub.sendNext(ByteString("foo"))
+      sub.expectNext(ByteString("foo"))
+    }
+
     "send and receive correct bytes" in {
       val bigString = ByteString(Array.fill[Byte](258)(-1))
 
