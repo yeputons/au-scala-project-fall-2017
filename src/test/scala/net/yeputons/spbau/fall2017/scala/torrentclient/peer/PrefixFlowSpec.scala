@@ -25,7 +25,7 @@ class PrefixFlowSpec
         .probe[String]
         .map(new WrappedString(_))
         .viaMat(
-          ExpectPrefixFlow[Char, WrappedString](new WrappedString(prefix))
+          ExpectPrefixFlow[Char, WrappedString, Unit](new WrappedString(prefix))
         )(Keep.both)
         .map(_.self)
         .toMat(TestSink.probe[String])(Keep.both)

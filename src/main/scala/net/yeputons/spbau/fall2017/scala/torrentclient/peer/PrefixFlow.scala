@@ -15,7 +15,7 @@ object ExpectPrefixFlow {
     * that this stream starts with a specific prefix and emits everything
     * except the prefix. Throws a [[PrefixMismatchException]] if first
     * bytes of the stream do not match `expectedPrefix`. Checks them immediately
-    * after creation. Materializes to `Future[Unit]` which is completed when
+    * after creation. Materializes to a `Future` which is completed when
     * the expected prefix is successfully read.
     *
     * **emits** when at least `expectedPrefix.length + 1` elements of type `A` were received
@@ -25,13 +25,14 @@ object ExpectPrefixFlow {
     * **completes** when upstream completes and all elements has been emitted
     *
     * @param expectedPrefix The prefix
+    * @param matchedMessage The value which completes the future
     * @tparam A Type of a single element in the stream (e.g. [[Char]])
     * @tparam T Type of a chunk grouping multiple elements together (e.g. [[List[Char]])
     */
-  def apply[A, T <: Seq[A]](expectedPrefix: T)(
-      implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, Future[Unit]] = {
+  def apply[A, T <: Seq[A], R](expectedPrefix: T, matchedMessage: R = ())(
+      implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, Future[R]] = {
     def prefixReadFuture[U] =
-      Flow[U].map(_ => ()).toMat(Sink.head)(Keep.right)
+      Flow[U].map(_ => matchedMessage).toMat(Sink.head)(Keep.right)
     Flow[T]
       .prepend(
         // If `expectedPrefix` is empty, `TakePrefixFlow` won't run until the first element, kickstart it

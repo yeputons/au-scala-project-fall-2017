@@ -5,6 +5,7 @@ import java.nio.{BufferUnderflowException, ByteBuffer, ByteOrder}
 import akka.NotUsed
 import akka.stream.scaladsl.{BidiFlow, Flow, Framing, Keep, Source}
 import akka.util.{ByteString, ByteStringBuilder}
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandshake.HandshakeCompleted
 
 import scala.concurrent.Future
 
@@ -30,7 +31,11 @@ object PeerProtocol {
   def apply(infoHash: ByteString,
             myPeerId: ByteString,
             otherPeerId: Option[ByteString])
-    : BidiFlow[PeerMessage, ByteString, ByteString, PeerMessage, Future[Unit]] =
+    : BidiFlow[PeerMessage,
+               ByteString,
+               ByteString,
+               PeerMessage,
+               Future[HandshakeCompleted.type]] =
     PeerMessagesParsing()
       .atop(PeerFraming())
       .atopMat(PeerHandshake(infoHash, myPeerId, otherPeerId))(Keep.right)
@@ -158,7 +163,11 @@ object PeerHandshake {
   def apply(infoHash: ByteString,
             myPeerId: ByteString,
             otherPeerId: Option[ByteString])
-    : BidiFlow[ByteString, ByteString, ByteString, ByteString, Future[Unit]] = {
+    : BidiFlow[ByteString,
+               ByteString,
+               ByteString,
+               ByteString,
+               Future[HandshakeCompleted.type]] = {
     require(infoHash.length == 20, "infoHash should be exactly 20 bytes")
     require(myPeerId.length == 20, "myPeerId should be exactly 20 bytes")
     otherPeerId.foreach(x =>
@@ -169,11 +178,17 @@ object PeerHandshake {
     val remoteToLocalFlow =
       otherPeerId match {
         case Some(id) =>
-          ExpectPrefixFlow[Byte, ByteString](Header ++ infoHash ++ id)
+          ExpectPrefixFlow[Byte, ByteString, HandshakeCompleted.type](
+            Header ++ infoHash ++ id,
+            HandshakeCompleted)
         case None =>
-          ExpectPrefixFlow[Byte, ByteString](Header ++ infoHash)
+          ExpectPrefixFlow[Byte, ByteString, HandshakeCompleted.type](
+            Header ++ infoHash,
+            HandshakeCompleted)
             .via(TakePrefixFlow[Byte, ByteString](20).drop(1))
       }
     BidiFlow.fromFlowsMat(localToRemoteFlow, remoteToLocalFlow)(Keep.right)
   }
+
+  case object HandshakeCompleted
 }
