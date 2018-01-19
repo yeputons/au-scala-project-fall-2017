@@ -8,6 +8,7 @@ import akka.util.{ByteString, ByteStringBuilder}
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandshake.HandshakeCompleted
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 sealed trait PeerMessage
 object PeerMessage {
@@ -177,19 +178,32 @@ object PeerHandshake {
     val localToRemoteFlow =
       Flow[ByteString].prepend(Source.single(Header ++ infoHash ++ myPeerId))
     val remoteToLocalFlow =
-      otherPeerId match {
-        case Some(id) =>
-          ExpectPrefixFlow[Byte, ByteString, HandshakeCompleted.type](
-            Header ++ infoHash ++ id,
-            HandshakeCompleted)
-        case None =>
-          ExpectPrefixFlow[Byte, ByteString, HandshakeCompleted.type](
-            Header ++ infoHash,
-            HandshakeCompleted)
-            .via(TakePrefixFlow[Byte, ByteString](20).drop(1))
-      }
+      ExpectPrefixFlow[Byte, ByteString, HandshakeCompleted.type](
+        Header.length + 40, { prefix: ByteString =>
+          val (realHeader, tail) = prefix.splitAt(Header.size)
+          val (realInfoHash, realOtherPeerId) = tail.splitAt(infoHash.size)
+          if (realHeader != Header)
+            Failure(InvalidPartException("header", realHeader, Header))
+          else if (realInfoHash != infoHash)
+            Failure(InvalidPartException("info_hash", realInfoHash, infoHash))
+          else if (!otherPeerId.forall(_ == realOtherPeerId))
+            Failure(
+              InvalidPartException("otherPeerId",
+                                   realOtherPeerId,
+                                   otherPeerId.get))
+          else
+            Success(())
+        },
+        HandshakeCompleted
+      )
     BidiFlow.fromFlowsMat(localToRemoteFlow, remoteToLocalFlow)(Keep.right)
   }
 
   case object HandshakeCompleted
+
+  case class HandshakeException(message: String) extends Exception(message)
+  case class InvalidPartException(part: String,
+                                  real: ByteString,
+                                  expected: ByteString)
+      extends Exception(s"invalid $part: got $real instead of $expected")
 }
