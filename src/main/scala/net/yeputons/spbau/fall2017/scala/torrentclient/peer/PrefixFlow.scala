@@ -7,6 +7,7 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable
 import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 object ExpectPrefixFlow {
 
@@ -24,12 +25,15 @@ object ExpectPrefixFlow {
     *
     * **completes** when upstream completes and all elements has been emitted
     *
-    * @param expectedPrefix The prefix
+    * @param prefixLength Length of the expected prefix
+    * @param prefixPredicate Function which returns `true` iff the prefix passed is OK
     * @param matchedMessage The value which completes the future
     * @tparam A Type of a single element in the stream (e.g. [[Char]])
     * @tparam T Type of a chunk grouping multiple elements together (e.g. [[List[Char]])
     */
-  def apply[A, T <: Seq[A], R](expectedPrefix: T, matchedMessage: R = ())(
+  def apply[A, T <: Seq[A], R](prefixLength: Int,
+                               prefixPredicate: T => Try[Unit],
+                               matchedMessage: R)(
       implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, Future[R]] = {
     def prefixReadFuture[U] =
       Flow[U].map(_ => matchedMessage).toMat(Sink.head)(Keep.right)
@@ -38,12 +42,13 @@ object ExpectPrefixFlow {
         // If `expectedPrefix` is empty, `TakePrefixFlow` won't run until the first element, kickstart it
         Source.single(cbf().result())
       )
-      .via(TakePrefixFlow[A, T](expectedPrefix.length))
+      .via(TakePrefixFlow[A, T](prefixLength))
       .prefixAndTail(1)
       .map {
         case x @ (immutable.Seq(realPrefix), tail) =>
-          if (realPrefix != expectedPrefix) {
-            throw PrefixMismatchException(realPrefix, expectedPrefix)
+          prefixPredicate(realPrefix) match {
+            case Success(()) =>
+            case Failure(t)  => throw t
           }
           tail
       }
@@ -51,6 +56,16 @@ object ExpectPrefixFlow {
       .flatMapConcat(identity)
       .buffer(1, OverflowStrategy.backpressure) // Force checking the handshake even without pull requests
   }
+
+  def apply[A, T <: Seq[A], R](expectedPrefix: T, matchedMessage: R = ())(
+      implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, Future[R]] =
+    apply[A, T, R](
+      expectedPrefix.length, { realPrefix: T =>
+        if (realPrefix == expectedPrefix) Success(())
+        else Failure(PrefixMismatchException(realPrefix, expectedPrefix))
+      },
+      matchedMessage
+    )
 }
 
 case class PrefixMismatchException[T <: Seq[_]](realPrefix: T,
