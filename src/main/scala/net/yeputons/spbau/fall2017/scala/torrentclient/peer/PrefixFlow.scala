@@ -2,10 +2,11 @@ package net.yeputons.spbau.fall2017.scala.torrentclient.peer
 
 import akka.NotUsed
 import akka.stream.OverflowStrategy
-import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 
 import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable
+import scala.concurrent.Future
 
 object ExpectPrefixFlow {
 
@@ -14,7 +15,8 @@ object ExpectPrefixFlow {
     * that this stream starts with a specific prefix and emits everything
     * except the prefix. Throws a [[PrefixMismatchException]] if first
     * bytes of the stream do not match `expectedPrefix`. Checks them immediately
-    * after creation.
+    * after creation. Materializes to `Future[Unit]` which is completed when
+    * the expected prefix is successfully read.
     *
     * **emits** when at least `expectedPrefix.length + 1` elements of type `A` were received
     *
@@ -27,17 +29,27 @@ object ExpectPrefixFlow {
     * @tparam T Type of a chunk grouping multiple elements together (e.g. [[List[Char]])
     */
   def apply[A, T <: Seq[A]](expectedPrefix: T)(
-      implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, NotUsed] =
-    TakePrefixFlow[A, T](expectedPrefix.length)
+      implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, Future[Unit]] = {
+    def prefixReadFuture[U] =
+      Flow[U].map(_ => ()).toMat(Sink.head)(Keep.right)
+    Flow[T]
+      .prepend(
+        // If `expectedPrefix` is empty, `TakePrefixFlow` won't run until the first element, kickstart it
+        Source.single(cbf().result())
+      )
+      .via(TakePrefixFlow[A, T](expectedPrefix.length))
       .prefixAndTail(1)
-      .flatMapConcat {
-        case (immutable.Seq(realPrefix), tail) =>
+      .map {
+        case x @ (immutable.Seq(realPrefix), tail) =>
           if (realPrefix != expectedPrefix) {
             throw PrefixMismatchException(realPrefix, expectedPrefix)
           }
           tail
       }
+      .alsoToMat(prefixReadFuture)(Keep.right)
+      .flatMapConcat(identity)
       .buffer(1, OverflowStrategy.backpressure) // Force checking the handshake even without pull requests
+  }
 }
 
 case class PrefixMismatchException[T <: Seq[_]](realPrefix: T,

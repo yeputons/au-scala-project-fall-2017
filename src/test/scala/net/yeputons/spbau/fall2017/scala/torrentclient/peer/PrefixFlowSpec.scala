@@ -9,8 +9,9 @@ import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable
 import scala.collection.immutable.WrappedString
-import scala.concurrent.Await
+import scala.concurrent.{Await, TimeoutException}
 import scala.concurrent.duration._
+import scala.util.Failure
 
 class PrefixFlowSpec
     extends TestKit(ActorSystem("ExpectPrefixFlowSpec"))
@@ -23,14 +24,17 @@ class PrefixFlowSpec
       TestSource
         .probe[String]
         .map(new WrappedString(_))
-        .via(ExpectPrefixFlow[Char, WrappedString](new WrappedString(prefix)))
+        .viaMat(
+          ExpectPrefixFlow[Char, WrappedString](new WrappedString(prefix))
+        )(Keep.both)
         .map(_.self)
         .toMat(TestSink.probe[String])(Keep.both)
         .run()
 
     "prefix is empty" must {
       "pass data intact" in {
-        val (pub, sub) = run("")
+        val ((pub, f), sub) = run("")
+        Await.result(f, 100.milliseconds)
 
         pub.sendNext("hello")
         pub.sendNext("cold")
@@ -47,7 +51,8 @@ class PrefixFlowSpec
       }
 
       "pass errors intact" in {
-        val (pub, sub) = run("")
+        val ((pub, f), sub) = run("")
+        Await.result(f, 100.milliseconds)
         sub.request(1)
 
         pub.sendNext("hello")
@@ -61,10 +66,12 @@ class PrefixFlowSpec
 
     "prefix matches" must {
       "detect prefix as a single message" in {
-        val (pub, sub) = run("prefix")
-        sub.request(1)
+        val ((pub, f), sub) = run("prefix")
 
         pub.sendNext("prefix")
+        Await.result(f, 100.milliseconds)
+
+        sub.request(1)
         sub.expectNoMessage(100.milliseconds)
 
         pub.sendNext("message")
@@ -74,13 +81,17 @@ class PrefixFlowSpec
         sub.expectComplete()
       }
       "detect partitioned prefix" in {
-        val (pub, sub) = run("prefix")
-        sub.request(1)
+        val ((pub, f), sub) = run("prefix")
 
         pub.sendNext("pref")
+
+        an[TimeoutException] should be thrownBy Await.ready(f, 100.milliseconds)
+        sub.request(1)
         sub.expectNoMessage(100.milliseconds)
+        f.isCompleted shouldBe false
 
         pub.sendNext("ix")
+        Await.result(f, 100.milliseconds)
         sub.expectNoMessage(100.milliseconds)
 
         pub.sendNext("message")
@@ -90,23 +101,28 @@ class PrefixFlowSpec
         sub.expectComplete()
       }
       "detect prefix with a message" in {
-        val (pub, sub) = run("prefix")
-        sub.request(1)
+        val ((pub, f), sub) = run("prefix")
 
         pub.sendNext("prefixmessage")
+        Await.result(f, 100.milliseconds)
+
+        sub.request(1)
         sub.expectNext("message")
 
         pub.sendComplete()
         sub.expectComplete()
       }
       "detect partitioned prefix with a message" in {
-        val (pub, sub) = run("prefix")
-        sub.request(1)
+        val ((pub, f), sub) = run("prefix")
 
         pub.sendNext("pref")
+        an[TimeoutException] should be thrownBy Await.ready(f, 100.milliseconds)
+        sub.request(1)
         sub.expectNoMessage(100.milliseconds)
+        f.isCompleted shouldBe false
 
         pub.sendNext("ixmessage")
+        Await.result(f, 100.milliseconds)
         sub.expectNext("message")
 
         pub.sendComplete()
@@ -116,42 +132,49 @@ class PrefixFlowSpec
 
     "prefix mismatches with no pull request" must {
       "detect prefix as a single message" in {
-        val (pub, sub) = run("prefix")
+        val ((pub, f), sub) = run("prefix")
         sub.ensureSubscription()
 
+        f.isCompleted shouldBe false
         pub.sendNext("prefiy")
         sub.expectError(
           PrefixMismatchException[WrappedString]("prefiy", "prefix"))
+        Await.ready(f, 100.milliseconds).value.get shouldBe a[Failure[_]]
       }
       "detect partitioned prefix" in {
-        val (pub, sub) = run("prefix")
+        val ((pub, f), sub) = run("prefix")
         sub.ensureSubscription()
 
         pub.sendNext("prefi")
         sub.expectNoMessage(100.milliseconds)
+        f.isCompleted shouldBe false
 
         pub.sendNext("y")
         sub.expectError(
           PrefixMismatchException[WrappedString]("prefiy", "prefix"))
+        Await.ready(f, 100.milliseconds).value.get shouldBe a[Failure[_]]
       }
       "detect prefix with a message" in {
-        val (pub, sub) = run("prefix")
+        val ((pub, f), sub) = run("prefix")
         sub.ensureSubscription()
 
         pub.sendNext("prefiymessage")
         sub.expectError(
           PrefixMismatchException[WrappedString]("prefiy", "prefix"))
+        Await.ready(f, 100.milliseconds).value.get shouldBe a[Failure[_]]
       }
       "detect partitioned prefix with a message" in {
-        val (pub, sub) = run("prefix")
+        val ((pub, f), sub) = run("prefix")
         sub.ensureSubscription()
 
         pub.sendNext("pref")
         sub.expectNoMessage(100.milliseconds)
+        f.isCompleted shouldBe false
 
         pub.sendNext("iymessage")
         sub.expectError(
           PrefixMismatchException[WrappedString]("prefiy", "prefix"))
+        Await.ready(f, 100.milliseconds).value.get shouldBe a[Failure[_]]
       }
     }
   }
