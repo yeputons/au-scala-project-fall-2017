@@ -5,11 +5,12 @@ import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 
+import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable
 
 object ExpectPrefixFlow {
   def apply(expectedPrefix: ByteString): Flow[ByteString, ByteString, NotUsed] =
-    TakePrefixFlow(expectedPrefix.length)
+    TakePrefixFlow[Byte, ByteString](expectedPrefix.length)
       .prefixAndTail(1)
       .flatMapConcat {
         case (immutable.Seq(realPrefix), tail) =>
@@ -26,28 +27,31 @@ case class PrefixMismatchException(realPrefix: ByteString,
     extends Exception
 
 object TakePrefixFlow {
-  def apply(n: Int): Flow[ByteString, ByteString, NotUsed] =
-    Flow[ByteString]
+  def apply[A, T <: Seq[A]](n: Int)(
+      implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, NotUsed] =
+    Flow[T]
       .statefulMapConcat { () =>
         var remaining = n
-        var collectedPrefix = Option(ByteString.empty)
-        buffer: ByteString =>
+        var prefixBuilder = Option(cbf())
+        prefixBuilder.foreach(_.sizeHint(n))
+
+        buffer: T =>
           {
-            collectedPrefix match {
+            prefixBuilder match {
               case None => immutable.Iterable(buffer)
-              case Some(oldPrefix) =>
+              case Some(builder) =>
                 val (prefix, suffix) = buffer.splitAt(remaining)
                 remaining -= prefix.length
-                val newPrefix = oldPrefix ++ prefix
+                builder ++= prefix
                 if (remaining > 0) {
-                  collectedPrefix = Some(newPrefix)
                   immutable.Iterable.empty
                 } else {
-                  collectedPrefix = None
+                  prefixBuilder = None
                   if (suffix.isEmpty) {
-                    immutable.Iterable(newPrefix)
+                    immutable.Iterable(builder.result())
                   } else {
-                    immutable.Iterable(newPrefix, suffix)
+                    immutable.Iterable(builder.result(),
+                                       (cbf() ++= suffix).result())
                   }
                 }
             }

@@ -136,7 +136,7 @@ class PrefixFlowSpec
       Await
         .result(
           Source(immutable.Seq(data: _*).map(ByteString(_)))
-            .via(TakePrefixFlow(n))
+            .via(TakePrefixFlow[Byte, ByteString](n))
             .runWith(Sink.seq),
           100.milliseconds
         )
