@@ -8,6 +8,24 @@ import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable
 
 object ExpectPrefixFlow {
+
+  /**
+    * Accepts a chunked stream of `A` (each chunk is of type `T`), ensures
+    * that this stream starts with a specific prefix and emits everything
+    * except the prefix. Throws a [[PrefixMismatchException]] if first
+    * bytes of the stream do not match `expectedPrefix`. Checks them immediately
+    * after creation.
+    *
+    * **emits** when at least `expectedPrefix.length + 1` elements of type `A` were received
+    *
+    * **backpressures** when downstream backpressures or there are still available elements
+    *
+    * **completes** when upstream completes and all elements has been emitted
+    *
+    * @param expectedPrefix The prefix
+    * @tparam A Type of a single element in the stream (e.g. [[Char]])
+    * @tparam T Type of a chunk grouping multiple elements together (e.g. [[List[Char]])
+    */
   def apply[A, T <: Seq[A]](expectedPrefix: T)(
       implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, NotUsed] =
     TakePrefixFlow[A, T](expectedPrefix.length)
@@ -27,6 +45,23 @@ case class PrefixMismatchException[T <: Seq[_]](realPrefix: T,
     extends Exception
 
 object TakePrefixFlow {
+
+  /**
+    * Accepts a chunked stream of `A` (each chunk is of type `T`) and emits
+    * the same elements (chunked), but with the first chunk having a specific length.
+    * For example, when `n=3`, `Seq(1, 2), Seq(3, 4), Seq(5, 6), Seq(7, 8)` will be
+    * transformed to `Seq(1, 2, 3), Seq(4), Seq(5, 6), Seq(7, 8)`.
+    *
+    * **emits** when at least `n` elements of type `A` were received
+    *
+    * **backpressures** when downstream backpressures or there are still available elements
+    *
+    * **completes** when upstream completes and all elements has been emitted
+    *
+    * @param n The required length of the first chunk
+    * @tparam A Type of a single element in the stream (e.g. [[Char]])
+    * @tparam T Type of a chunk grouping multiple elements together (e.g. [[List[Char]])
+    */
   def apply[A, T <: Seq[A]](n: Int)(
       implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, NotUsed] =
     Flow[T]
