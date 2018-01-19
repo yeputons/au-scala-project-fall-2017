@@ -9,6 +9,7 @@ import akka.util.ByteString
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable
+import scala.collection.immutable.WrappedString
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -135,12 +136,12 @@ class PrefixFlowSpec
     def run(n: Int, data: String*): immutable.Seq[String] =
       Await
         .result(
-          Source(immutable.Seq(data: _*).map(ByteString(_)))
-            .via(TakePrefixFlow[Byte, ByteString](n))
+          Source(immutable.Seq(data: _*).map(new WrappedString(_)))
+            .via(TakePrefixFlow[Char, WrappedString](n))
+            .map(_.self)
             .runWith(Sink.seq),
           100.milliseconds
         )
-        .map(_.utf8String)
 
     "n=0" in {
       run(0, "foo", "bar", "baz") shouldBe Seq("", "foo", "bar", "baz")
