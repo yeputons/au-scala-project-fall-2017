@@ -159,8 +159,9 @@ object PeerFraming {
 
 object PeerHandshake {
   private final val Header: ByteString =
-    ByteString(19) ++ ByteString("BitTorrent protocol") ++
-      ByteString(0, 0, 0, 0, 0, 0, 0, 0)
+    ByteString(19) ++ ByteString("BitTorrent protocol")
+  private final val SupportedExtension: ByteString =
+    ByteString(0, 0, 0, 0, 0, 0, 0, 0)
 
   def apply(infoHash: ByteString,
             myPeerId: ByteString,
@@ -176,12 +177,14 @@ object PeerHandshake {
       require(x.length == 20, "otherPeerId should be exactly 20 bytes"))
 
     val localToRemoteFlow =
-      Flow[ByteString].prepend(Source.single(Header ++ infoHash ++ myPeerId))
+      Flow[ByteString].prepend(
+        Source.single(Header ++ SupportedExtension ++ infoHash ++ myPeerId))
     val remoteToLocalFlow =
       ExpectPrefixFlow[Byte, ByteString, HandshakeCompleted.type](
-        Header.length + 40, { prefix: ByteString =>
-          val (realHeader, tail) = prefix.splitAt(Header.size)
-          val (realInfoHash, realOtherPeerId) = tail.splitAt(infoHash.size)
+        Header.length + SupportedExtension.length + 40, { prefix: ByteString =>
+          val (realHeader, tail1) = prefix.splitAt(Header.size)
+          val (_, tail2) = tail1.splitAt(SupportedExtension.size)
+          val (realInfoHash, realOtherPeerId) = tail2.splitAt(infoHash.size)
           if (realHeader != Header)
             Failure(InvalidPartException("header", realHeader, Header))
           else if (realInfoHash != infoHash)

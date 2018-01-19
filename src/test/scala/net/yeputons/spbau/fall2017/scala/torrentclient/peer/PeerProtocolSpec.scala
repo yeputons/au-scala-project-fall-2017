@@ -127,7 +127,8 @@ class PeerProtocolSpec
       val remoteSource = Source(
         immutable.Seq(
           ByteString(19) ++ ByteString("BitTorrent protocol") ++
-            ByteString(0, 0, 0, 0, 0, 0, 0, 0),
+            // Some extension bits from qBittorrent
+            ByteString(0, 0, 0, 0, 0, 24, 0, 5),
           infoHash ++ otherPeerId ++ ByteString(0, 0, 0, 3),
           ByteString("wow"),
           ByteString(0, 0, 0, 2) ++ ByteString("it") ++ ByteString(0, 0, 0, 0),
