@@ -38,7 +38,7 @@ class PeerProtocolSpec
             TestSource.probe[PeerMessage])) // Local end
           .run()
       remoteSource.sendNext(
-        ByteString("19BitTorrent protocol") ++
+        ByteString(19) ++ ByteString("BitTorrent protocol") ++
           ByteString(0, 0, 0, 0, 0, 0, 0, 0) ++
           infoHash ++ otherPeerId.slice(0, 19)
       )
@@ -126,7 +126,7 @@ class PeerProtocolSpec
         Source(immutable.Seq(ByteString("hi"), bigString, ByteString("hello")))
       val remoteSource = Source(
         immutable.Seq(
-          ByteString("19BitTorrent protocol") ++
+          ByteString(19) ++ ByteString("BitTorrent protocol") ++
             ByteString(0, 0, 0, 0, 0, 0, 0, 0),
           infoHash ++ otherPeerId ++ ByteString(0, 0, 0, 3),
           ByteString("wow"),
@@ -155,7 +155,7 @@ class PeerProtocolSpec
         bigString)
 
       Await.result(remoteResult, 100.milliseconds).flatten shouldBe (
-        ByteString("19BitTorrent protocol") ++
+        ByteString(19) ++ ByteString("BitTorrent protocol") ++
           ByteString(0, 0, 0, 0, 0, 0, 0, 0) ++
           infoHash ++ myPeerId ++
           ByteString(0, 0, 0, 2) ++ ByteString("hi") ++

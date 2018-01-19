@@ -158,7 +158,8 @@ object PeerFraming {
 
 object PeerHandshake {
   private final val Header: ByteString =
-    ByteString("19BitTorrent protocol") ++ ByteString(0, 0, 0, 0, 0, 0, 0, 0)
+    ByteString(19) ++ ByteString("BitTorrent protocol") ++
+      ByteString(0, 0, 0, 0, 0, 0, 0, 0)
 
   def apply(infoHash: ByteString,
             myPeerId: ByteString,
