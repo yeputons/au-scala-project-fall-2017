@@ -50,7 +50,8 @@ object PeerMessagesParsing {
     case HasNewPiece(id) =>
       ByteString.newBuilder.putByte(4).putInt(id).result()
     case HasPieces(pieces) =>
-      val bitmask = (0 until (pieces.max + 7) / 8).map { position =>
+      val maxId = if (pieces.isEmpty) 0 else pieces.max
+      val bitmask = (0 until (maxId + 7) / 8).map { position =>
         var result = 0
         for (i <- 0 to 7)
           if (pieces.contains(8 * position + i))
