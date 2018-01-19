@@ -3,14 +3,14 @@ package net.yeputons.spbau.fall2017.scala.torrentclient.peer
 import akka.NotUsed
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.Flow
-import akka.util.ByteString
 
 import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable
 
 object ExpectPrefixFlow {
-  def apply(expectedPrefix: ByteString): Flow[ByteString, ByteString, NotUsed] =
-    TakePrefixFlow[Byte, ByteString](expectedPrefix.length)
+  def apply[A, T <: Seq[A]](expectedPrefix: T)(
+      implicit cbf: CanBuildFrom[T, A, T]): Flow[T, T, NotUsed] =
+    TakePrefixFlow[A, T](expectedPrefix.length)
       .prefixAndTail(1)
       .flatMapConcat {
         case (immutable.Seq(realPrefix), tail) =>
@@ -22,8 +22,8 @@ object ExpectPrefixFlow {
       .buffer(1, OverflowStrategy.backpressure) // Force checking the handshake even without pull requests
 }
 
-case class PrefixMismatchException(realPrefix: ByteString,
-                                   expectedPrefix: ByteString)
+case class PrefixMismatchException[T <: Seq[_]](realPrefix: T,
+                                                expectedPrefix: T)
     extends Exception
 
 object TakePrefixFlow {

@@ -23,7 +23,7 @@ class PrefixFlowSpec
     def run(prefix: String) =
       TestSource
         .probe[ByteString]
-        .via(ExpectPrefixFlow(ByteString(prefix)))
+        .via(ExpectPrefixFlow[Byte, ByteString](ByteString(prefix)))
         .toMat(TestSink.probe[ByteString])(Keep.both)
         .run()
 
