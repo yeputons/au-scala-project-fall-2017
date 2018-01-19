@@ -29,7 +29,7 @@ import scala.concurrent.duration.{FiniteDuration, _}
   * Automatically retrieves list of peers from the tracker on each (re)start.
   *
   * @param baseAnnounceUri Announce URI of the tracker to use, extra query parameters will be added
-  * @param infoHash 20-byte SHA1 hash idenitifying the torrent (see BEP 3)
+  * @param infoHash 20-byte SHA1 hash identifying the torrent (see BEP 3)
   * @param httpRequestsActorFactory Factory for creating a child [[HttpRequestActor]], would typically call [[ActorRefFactory.actorOf()]].
   *                                 Another option is to provide a mock which always returns the same mocked actor.
   * @param retryTimeout Amount of time to wait before retrying tracker request if the previous one failed
@@ -176,7 +176,7 @@ object Tracker {
     * Creates [[Props]] for the [[Tracker]] actor.
     *
     * @param baseAnnounceUri URI of the tracker to use, extra query parameters will be added
-    * @param infoHash 20-byte SHA1 hash idenitifying the torrent (see BEP 3)
+    * @param infoHash 20-byte SHA1 hash identifying the torrent (see BEP 3)
     * @param httpReadTimeout Amount of time to allocate for reading tracker's response in full
     * @param retryTimeout Amount of time to wait before retrying tracker request if the previous one failed
     * @return
