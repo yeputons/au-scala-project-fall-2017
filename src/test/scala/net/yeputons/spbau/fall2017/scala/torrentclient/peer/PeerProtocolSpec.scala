@@ -6,6 +6,7 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
 import akka.util.ByteString
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerMessage.PieceId
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable
@@ -109,6 +110,52 @@ class PeerProtocolSpec
           ByteString(0, 0, 1, 2) ++ bigString ++
           ByteString(0, 0, 0, 5) ++ ByteString("hello")
       )
+    }
+  }
+
+  private val pieceId = PieceId(1234, 5678, 9012)
+  private val pieceIdSerialized = ByteString(
+    0x00, 0x00, 0x04, 0xD2, 0x00, 0x00, 0x16, 0x2E, 0x00, 0x00, 0x23, 0x34
+  )
+
+  private val examples = Map(
+    "KeepAlive" -> (PeerMessage.KeepAlive, ByteString.empty),
+    "Choke" -> (PeerMessage.Choke, ByteString(0)),
+    "Unchoke" -> (PeerMessage.Unchoke, ByteString(1)),
+    "Interested" -> (PeerMessage.Interested, ByteString(2)),
+    "NotInterested" -> (PeerMessage.NotInterested, ByteString(3)),
+    "HasNewPiece" -> (
+      PeerMessage.HasNewPiece(123456),
+      ByteString(4, 0x00, 0x01, 0xE2, 0x40)
+    ),
+    "empty HasPieces" -> (PeerMessage.HasPieces(Set.empty), ByteString(5)),
+    "HasPieces" -> (
+      PeerMessage.HasPieces(Set(1, 2, 10, 12)),
+      // 0123 4567 | 89ab cdef
+      // 0110 0000 | 0010 1000
+      ByteString(5, 0x60, 0x28)
+    ),
+    "PieceRequest" -> (
+      PeerMessage.PieceRequest(pieceId),
+      ByteString(6) ++ pieceIdSerialized
+    ),
+    "PieceAvailable" -> (
+      PeerMessage.PieceAvailable(PieceId(1234, 5678, 9012),
+                                 ByteString(10, 20, 30, 40, 50)),
+      ByteString(7) ++ pieceIdSerialized ++ ByteString(10, 20, 30, 40, 50)
+    ),
+    "PieceRequestCancel" -> (
+      PeerMessage.PieceRequestCancel(pieceId),
+      ByteString(8) ++ pieceIdSerialized
+    ),
+  )
+
+  "PeerMessagesParsing" when {
+    for ((key, (message, encoded)) <- examples) {
+      f"working with $key" must {
+        "encode" in { PeerMessagesParsing.decodeMessage(encoded) shouldBe message }
+        "decode" in { PeerMessagesParsing.encodeMessage(message) shouldBe encoded }
+      }
     }
   }
 }
