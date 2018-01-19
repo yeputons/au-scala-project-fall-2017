@@ -3,8 +3,10 @@ package net.yeputons.spbau.fall2017.scala.torrentclient.peer
 import java.nio.{BufferUnderflowException, ByteBuffer, ByteOrder}
 
 import akka.NotUsed
-import akka.stream.scaladsl.{BidiFlow, Flow, Framing, Source}
+import akka.stream.scaladsl.{BidiFlow, Flow, Framing, Keep, Source}
 import akka.util.{ByteString, ByteStringBuilder}
+
+import scala.concurrent.Future
 
 sealed trait PeerMessage
 object PeerMessage {
@@ -28,10 +30,10 @@ object PeerProtocol {
   def apply(infoHash: ByteString,
             myPeerId: ByteString,
             otherPeerId: Option[ByteString])
-    : BidiFlow[PeerMessage, ByteString, ByteString, PeerMessage, NotUsed] =
+    : BidiFlow[PeerMessage, ByteString, ByteString, PeerMessage, Future[Unit]] =
     PeerMessagesParsing()
       .atop(PeerFraming())
-      .atop(PeerHandshake(infoHash, myPeerId, otherPeerId))
+      .atopMat(PeerHandshake(infoHash, myPeerId, otherPeerId))(Keep.right)
 }
 
 object PeerMessagesParsing {
@@ -156,7 +158,7 @@ object PeerHandshake {
   def apply(infoHash: ByteString,
             myPeerId: ByteString,
             otherPeerId: Option[ByteString])
-    : BidiFlow[ByteString, ByteString, ByteString, ByteString, NotUsed] = {
+    : BidiFlow[ByteString, ByteString, ByteString, ByteString, Future[Unit]] = {
     require(infoHash.length == 20, "infoHash should be exactly 20 bytes")
     require(myPeerId.length == 20, "myPeerId should be exactly 20 bytes")
     otherPeerId.foreach(x =>
@@ -172,6 +174,6 @@ object PeerHandshake {
           ExpectPrefixFlow[Byte, ByteString](Header ++ infoHash)
             .via(TakePrefixFlow[Byte, ByteString](20).drop(1))
       }
-    BidiFlow.fromFlows(localToRemoteFlow, remoteToLocalFlow)
+    BidiFlow.fromFlowsMat(localToRemoteFlow, remoteToLocalFlow)(Keep.right)
   }
 }

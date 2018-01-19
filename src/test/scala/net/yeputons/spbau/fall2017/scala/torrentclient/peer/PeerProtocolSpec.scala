@@ -7,10 +7,11 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerMessage.PieceId
+
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, Future, TimeoutException}
 import scala.concurrent.duration._
 
 class PeerProtocolSpec
@@ -19,11 +20,35 @@ class PeerProtocolSpec
     with Matchers {
   implicit val materializer: Materializer = ActorMaterializer()
 
-  "PeerFraming atop Handshake" must {
-    val infoHash = ByteString("this--is--info--hash")
-    val myPeerId = ByteString("this-is-some-peer-id")
-    val otherPeerId = ByteString("this-is-other-peerid")
+  val infoHash = ByteString("this--is--info--hash")
+  val myPeerId = ByteString("this-is-some-peer-id")
+  val otherPeerId = ByteString("this-is-other-peerid")
 
+  "PeerProtocol" must {
+    "complete future right after handshake" in {
+      val (f, remoteSource) =
+        PeerProtocol(infoHash, myPeerId, Some(otherPeerId))
+          .joinMat( // Remote end
+            Flow.fromSinkAndSourceCoupledMat(
+              Sink.ignore,
+              TestSource.probe[ByteString]
+            )(Keep.right))(Keep.both)
+          .join(Flow.fromSinkAndSourceCoupled(
+            Sink.ignore,
+            TestSource.probe[PeerMessage])) // Local end
+          .run()
+      remoteSource.sendNext(
+        ByteString("19BitTorrent protocol") ++
+          ByteString(0, 0, 0, 0, 0, 0, 0, 0) ++
+          infoHash ++ otherPeerId.slice(0, 19)
+      )
+      an[TimeoutException] should be thrownBy Await.result(f, 100.milliseconds)
+      remoteSource.sendNext(otherPeerId.slice(19, 20))
+      Await.result(f, 100.milliseconds)
+    }
+  }
+
+  "PeerFraming atop Handshake" must {
     "work when looped" in {
       val loop = PeerFraming()
         .atop(PeerHandshake(infoHash, myPeerId, Some(otherPeerId)))
