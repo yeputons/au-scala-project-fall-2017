@@ -66,7 +66,7 @@ class TrackerSpec
         HttpRequest(
           HttpMethods.GET,
           Uri(
-            s"/foo/bar?info_hash=$infoHashStr&compact=1&peer_id=$peerIdStr&port=0&uploaded=0&downloaded=0&left=0")))
+            s"/foo/bar?info_hash=$infoHashStr&compact=1&peer_id=$peerIdStr&port=703&uploaded=0&downloaded=0&left=0")))
       tracker ! PoisonPill
     }
 
@@ -81,7 +81,7 @@ class TrackerSpec
         HttpRequest(
           HttpMethods.GET,
           Uri(
-            s"/foo/bar?code=10&foo=%20&info_hash=$infoHashStr&compact=1&peer_id=$peerIdStr&port=0&uploaded=0&downloaded=0&left=0"))
+            s"/foo/bar?code=10&foo=%20&info_hash=$infoHashStr&compact=1&peer_id=$peerIdStr&port=703&uploaded=0&downloaded=0&left=0"))
       )
       tracker ! PoisonPill
     }
