@@ -5,7 +5,6 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
-import akka.util.ByteString
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable
@@ -22,22 +21,24 @@ class PrefixFlowSpec
   "ExpectPrefixFlow" when {
     def run(prefix: String) =
       TestSource
-        .probe[ByteString]
-        .via(ExpectPrefixFlow[Byte, ByteString](ByteString(prefix)))
-        .toMat(TestSink.probe[ByteString])(Keep.both)
+        .probe[String]
+        .map(new WrappedString(_))
+        .via(ExpectPrefixFlow[Char, WrappedString](new WrappedString(prefix)))
+        .map(_.self)
+        .toMat(TestSink.probe[String])(Keep.both)
         .run()
 
     "prefix is empty" must {
       "pass data intact" in {
         val (pub, sub) = run("")
-        pub.sendNext(ByteString("hello"))
-        pub.sendNext(ByteString("cold"))
-        pub.sendNext(ByteString("world"))
+        pub.sendNext("hello")
+        pub.sendNext("cold")
+        pub.sendNext("world")
         sub.request(1)
-        sub.expectNext(ByteString("hello"))
+        sub.expectNext("hello")
         sub.request(2)
-        sub.expectNext(ByteString("cold"))
-        sub.expectNext(ByteString("world"))
+        sub.expectNext("cold")
+        sub.expectNext("world")
         pub.sendComplete()
         sub.expectComplete()
       }
@@ -45,8 +46,8 @@ class PrefixFlowSpec
       "pass errors intact" in {
         val (pub, sub) = run("")
         sub.request(1)
-        pub.sendNext(ByteString("hello"))
-        sub.expectNext(ByteString("hello"))
+        pub.sendNext("hello")
+        sub.expectNext("hello")
         val err = new Exception()
         pub.sendError(err)
         sub.expectError(err)
@@ -57,40 +58,40 @@ class PrefixFlowSpec
       "detect prefix as a single message" in {
         val (pub, sub) = run("prefix")
         sub.request(1)
-        pub.sendNext(ByteString("prefix"))
+        pub.sendNext("prefix")
         sub.expectNoMessage(100.milliseconds)
-        pub.sendNext(ByteString("message"))
-        sub.expectNext(ByteString("message"))
+        pub.sendNext("message")
+        sub.expectNext("message")
         pub.sendComplete()
         sub.expectComplete()
       }
       "detect partitioned prefix" in {
         val (pub, sub) = run("prefix")
         sub.request(1)
-        pub.sendNext(ByteString("pref"))
+        pub.sendNext("pref")
         sub.expectNoMessage(100.milliseconds)
-        pub.sendNext(ByteString("ix"))
+        pub.sendNext("ix")
         sub.expectNoMessage(100.milliseconds)
-        pub.sendNext(ByteString("message"))
-        sub.expectNext(ByteString("message"))
+        pub.sendNext("message")
+        sub.expectNext("message")
         pub.sendComplete()
         sub.expectComplete()
       }
       "detect prefix with a message" in {
         val (pub, sub) = run("prefix")
         sub.request(1)
-        pub.sendNext(ByteString("prefixmessage"))
-        sub.expectNext(ByteString("message"))
+        pub.sendNext("prefixmessage")
+        sub.expectNext("message")
         pub.sendComplete()
         sub.expectComplete()
       }
       "detect partitioned prefix with a message" in {
         val (pub, sub) = run("prefix")
         sub.request(1)
-        pub.sendNext(ByteString("pref"))
+        pub.sendNext("pref")
         sub.expectNoMessage(100.milliseconds)
-        pub.sendNext(ByteString("ixmessage"))
-        sub.expectNext(ByteString("message"))
+        pub.sendNext("ixmessage")
+        sub.expectNext("message")
         pub.sendComplete()
         sub.expectComplete()
       }
@@ -100,34 +101,34 @@ class PrefixFlowSpec
       "detect prefix as a single message" in {
         val (pub, sub) = run("prefix")
         sub.ensureSubscription()
-        pub.sendNext(ByteString("prefiy"))
+        pub.sendNext("prefiy")
         sub.expectError(
-          PrefixMismatchException(ByteString("prefiy"), ByteString("prefix")))
+          PrefixMismatchException[WrappedString]("prefiy", "prefix"))
       }
       "detect partitioned prefix" in {
         val (pub, sub) = run("prefix")
         sub.ensureSubscription()
-        pub.sendNext(ByteString("prefi"))
+        pub.sendNext("prefi")
         sub.expectNoMessage(100.milliseconds)
-        pub.sendNext(ByteString("y"))
+        pub.sendNext("y")
         sub.expectError(
-          PrefixMismatchException(ByteString("prefiy"), ByteString("prefix")))
+          PrefixMismatchException[WrappedString]("prefiy", "prefix"))
       }
       "detect prefix with a message" in {
         val (pub, sub) = run("prefix")
         sub.ensureSubscription()
-        pub.sendNext(ByteString("prefiymessage"))
+        pub.sendNext("prefiymessage")
         sub.expectError(
-          PrefixMismatchException(ByteString("prefiy"), ByteString("prefix")))
+          PrefixMismatchException[WrappedString]("prefiy", "prefix"))
       }
       "detect partitioned prefix with a message" in {
         val (pub, sub) = run("prefix")
         sub.ensureSubscription()
-        pub.sendNext(ByteString("pref"))
+        pub.sendNext("pref")
         sub.expectNoMessage(100.milliseconds)
-        pub.sendNext(ByteString("iymessage"))
+        pub.sendNext("iymessage")
         sub.expectError(
-          PrefixMismatchException(ByteString("prefiy"), ByteString("prefix")))
+          PrefixMismatchException[WrappedString]("prefiy", "prefix"))
       }
     }
   }
