@@ -70,7 +70,7 @@ class PeerHandler(connectionFactory: (ActorRefFactory, ActorRef) => ActorRef)
         case PieceRequestCancel(pieceId) =>
           log.debug(s"Peer cancelled request for $pieceId")
         case PieceAvailable(pieceId, data) =>
-          log.debug(s"Received a $pieceId: ${data.length}")
+          log.debug(s"Received a $pieceId: ${data.length} bytes")
       }
   }
 
@@ -81,6 +81,7 @@ class PeerHandler(connectionFactory: (ActorRefFactory, ActorRef) => ActorRef)
 }
 
 object PeerHandler {
+
   /**
     * Creates [[Props]] for the [[PeerHandler]] actor for establishing TCP
     * connection with a BitTorrent peer. Parameters are directly passed
