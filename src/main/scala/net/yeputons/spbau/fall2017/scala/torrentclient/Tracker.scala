@@ -191,10 +191,11 @@ object Tracker {
             httpReadTimeout: FiniteDuration = DefaultHttpReadTimeout,
             retryTimeout: FiniteDuration = DefaultRetryTimeout) =
     Props(
-      new Tracker(baseAnnounceUri,
-                  infoHash,
-                  _.actorOf(HttpRequestActor.props(httpReadTimeout)),
-                  retryTimeout))
+      new Tracker(
+        baseAnnounceUri,
+        infoHash,
+        _.actorOf(HttpRequestActor.props(httpReadTimeout), "httpRequest"),
+        retryTimeout))
 
   final val DefaultHttpReadTimeout: FiniteDuration = 5.seconds
   final val DefaultRetryTimeout: FiniteDuration = 5.seconds
