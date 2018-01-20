@@ -39,8 +39,7 @@ class TrackerSpec
   val peerIdStr = "01234567890123456789"
 
   def createTracker(uri: Uri, httpRequestActor: ActorRef): ActorRef =
-    system.actorOf(Props(new Tracker(uri, infoHash, _ => httpRequestActor)),
-                   "tracker")
+    system.actorOf(Props(new Tracker(uri, infoHash, _ => httpRequestActor)))
 
   def successfulHttpResponse(data: BEntry): HttpRequestSucceeded = {
     val dataCoded = ByteString(BencodeEncoder(data).toArray)
