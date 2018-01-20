@@ -27,7 +27,9 @@ object ShowPeersForTorrentApp {
           |Expected arguments: <path-to-torrent-file>
           |
           |This test app parses a .torrent file, connects to a tracker,
-          |and prints a list of peers received from it.
+          |and prints a list of peers received from it. Then it connects
+          |to all received peers and prints received information to
+          |DEBUG log.
         """.stripMargin)
       sys.exit(1)
     }
