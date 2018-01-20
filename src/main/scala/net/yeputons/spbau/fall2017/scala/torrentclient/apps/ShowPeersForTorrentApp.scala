@@ -59,7 +59,8 @@ object ShowPeersForTorrentApp {
       .digest(BencodeEncoder(torrentInfo).toArray)
 
     val actorSystem = ActorSystem("show-peers-for-torrent")
-    val tracker = actorSystem.actorOf(Tracker.props(baseAnnounceUri, infoHash))
+    val tracker =
+      actorSystem.actorOf(Tracker.props(baseAnnounceUri, infoHash), "tracker")
     implicit val timeout: Timeout = Timeout(5.seconds)
 
     val random = new scala.util.Random()
