@@ -50,7 +50,7 @@ class PeerConnection(
         case e: StreamTcpException =>
           log.warning(s"TCP error, aborting: $e")
         case _ =>
-          log.warning(f"Peer protocol error occured, aborting connection: $e")
+          log.warning(f"Peer protocol error occurred, aborting connection: $e")
       }
       context.stop(self)
     case PeerConnection.OnCompleteMessage =>
