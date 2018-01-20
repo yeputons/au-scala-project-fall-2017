@@ -12,6 +12,10 @@ import akka.stream.{ActorMaterializer, OverflowStrategy, StreamTcpException}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, Tcp}
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.{
+  ReceivedPeerMessage,
+  SendPeerMessage
+}
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandshake.HandshakeCompleted
 
 import scala.concurrent.Future
@@ -44,7 +48,9 @@ class PeerConnection(
     case HandshakeCompleted =>
       log.info("Handshake completed")
     case m: PeerMessage =>
-      handler ! m
+      handler ! ReceivedPeerMessage(m)
+    case SendPeerMessage(m) =>
+      connection ! m
     case akka.actor.Status.Failure(e) =>
       e match {
         case e: StreamTcpException =>
@@ -68,6 +74,9 @@ class PeerConnection(
 }
 
 object PeerConnection {
+  case class SendPeerMessage(msg: PeerMessage)
+  case class ReceivedPeerMessage(msg: PeerMessage)
+
   def props(handler: ActorRef,
             infoHash: ByteString,
             myPeerId: ByteString,

@@ -10,6 +10,7 @@ import akka.actor.{
 }
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.ReceivedPeerMessage
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerMessage._
 
 import scala.collection.mutable
@@ -32,7 +33,7 @@ class PeerHandler(connectionFactory: (ActorRefFactory, ActorRef) => ActorRef)
   override def receive: Receive = {
     case Terminated(`connection`) =>
       context.stop(self)
-    case msg: PeerMessage =>
+    case ReceivedPeerMessage(msg) =>
       msg match {
         case KeepAlive =>
           log.info("Received KeepAlive")
