@@ -177,6 +177,19 @@ class PrefixFlowSpec
         Await.ready(f, 100.milliseconds).value.get shouldBe a[Failure[_]]
       }
     }
+
+    "prefix is too short" must {
+      "fail without pull requests" in {
+        val ((pub, f), sub) = run("prefix")
+        sub.ensureSubscription()
+
+        f.isCompleted shouldBe false
+        pub.sendNext("prefi")
+        pub.sendComplete()
+        sub.expectError(PrefixTooShortException[WrappedString]("prefi", 6))
+        Await.ready(f, 100.milliseconds).value.get shouldBe a[Failure[_]]
+      }
+    }
   }
 
   "TakePrefixFlow" when {
