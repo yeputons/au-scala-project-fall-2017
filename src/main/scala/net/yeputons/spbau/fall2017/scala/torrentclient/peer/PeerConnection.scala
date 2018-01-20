@@ -13,6 +13,7 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source, Tcp}
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.{
+  OnReceived,
   ReceivedPeerMessage,
   SendPeerMessage
 }
@@ -44,6 +45,7 @@ class PeerConnection(
     Source
       .actorRef(100, OverflowStrategy.fail)
       .viaMat(connectionFactory(context.system))(Keep.both)
+      .map(OnReceived)
       .to(Sink.actorRef(self, PeerConnection.OnCompleteMessage))
       .run()
   context.watch(connection)
@@ -55,7 +57,7 @@ class PeerConnection(
   override def receive: Receive = {
     case HandshakeCompleted =>
       log.info("Handshake completed")
-    case m: PeerMessage =>
+    case OnReceived(m) =>
       handler ! ReceivedPeerMessage(m)
     case SendPeerMessage(m) =>
       connection ! m
@@ -116,5 +118,6 @@ object PeerConnection {
             .join(Tcp(actorSystem).outgoingConnection(otherPeer.address))
       ))
 
+  private case class OnReceived(msg: PeerMessage)
   private case object OnCompleteMessage
 }
