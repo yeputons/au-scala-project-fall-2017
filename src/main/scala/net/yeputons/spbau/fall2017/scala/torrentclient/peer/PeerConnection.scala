@@ -82,5 +82,5 @@ object PeerConnection {
             .join(Tcp(actorSystem).outgoingConnection(otherPeer.address))
       ))
 
-  case object OnCompleteMessage
+  private case object OnCompleteMessage
 }
