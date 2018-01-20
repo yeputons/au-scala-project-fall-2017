@@ -13,13 +13,12 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source, Tcp}
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandshake.HandshakeCompleted
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerMessage._
 
 import scala.concurrent.Future
-import scala.collection.mutable
 import scala.util.{Failure, Success}
 
 class PeerConnection(
+    handler: ActorRef,
     connectionFactory: ActorSystem => Flow[PeerMessage,
                                            PeerMessage,
                                            Future[HandshakeCompleted.type]])
@@ -41,15 +40,11 @@ class PeerConnection(
     case Failure(_) => // Do nothing, the failure will be received from the stream
   }
 
-  var otherChoked = true
-  var otherInterested = false
-  val otherAvailable = mutable.Set.empty[Int]
-
   override def receive: Receive = {
-    case KeepAlive =>
-      log.info("Received KeepAlive")
     case HandshakeCompleted =>
       log.info("Handshake completed")
+    case m: PeerMessage =>
+      handler ! m
     case akka.actor.Status.Failure(e) =>
       e match {
         case e: StreamTcpException =>
@@ -64,29 +59,6 @@ class PeerConnection(
     case Terminated(`connection`) =>
       log.warning("Connection actor stopped, stopping")
       context.stop(self)
-
-    case Choke =>
-      otherChoked = true
-      log.debug("Peer choked")
-    case Unchoke =>
-      otherChoked = false
-      log.debug("Peer unchoked")
-    case Interested =>
-      otherInterested = true
-      log.debug("Peer is interested")
-    case NotInterested =>
-      otherInterested = false
-      log.debug("Peer is not interested")
-
-    case HasPieces(pieces) =>
-      otherAvailable.clear()
-      otherAvailable ++= pieces
-      log.debug(
-        s"New information about pieces: ${otherAvailable.size} available")
-    case HasNewPiece(piece) =>
-      otherAvailable += piece
-      log.debug(
-        s"Piece $piece is now available; ${otherAvailable.size} in total")
   }
 
   override def unhandled(message: Any): Unit = {
@@ -96,16 +68,19 @@ class PeerConnection(
 }
 
 object PeerConnection {
-  def props(infoHash: ByteString,
+  def props(handler: ActorRef,
+            infoHash: ByteString,
             myPeerId: ByteString,
             otherPeer: PeerInformation) =
     Props(
       new PeerConnection(
+        handler,
         actorSystem =>
           PeerProtocol(infoHash,
                        myPeerId,
                        otherPeer.id.map(x => ByteString(x.toArray)))
-            .join(Tcp(actorSystem).outgoingConnection(otherPeer.address))))
+            .join(Tcp(actorSystem).outgoingConnection(otherPeer.address))
+      ))
 
   case object OnCompleteMessage
 }

@@ -14,7 +14,7 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
   PeersListResponse
 }
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, _}
@@ -76,9 +76,9 @@ object ShowPeersForTorrentApp {
     peers.foreach { peer =>
       System.out.println(f"Connecting to $peer...")
       val peerActor = actorSystem.actorOf(
-        PeerConnection.props(ByteString(infoHash),
-                             ByteString("01234567890123456789"),
-                             peer),
+        PeerHandler.props(ByteString(infoHash),
+                          ByteString("01234567890123456789"),
+                          peer),
         java.net.URLEncoder.encode(peer.address.getHostString, "ASCII") +
           "_" + peer.address.getPort
       )
