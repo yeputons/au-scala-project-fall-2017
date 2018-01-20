@@ -138,6 +138,14 @@ class TakePrefixFlow[A, T <: Seq[A]](n: Int)(
         new InHandler {
           override def onPush(): Unit =
             state = push(grab(in))
+
+          override def onUpstreamFinish(): Unit =
+            state match {
+              case FindingPrefix(_, prefixBuilder) =>
+                failStage(PrefixTooShortException(prefixBuilder.result(), n))
+              case UnsentChunk(_) => completeStage()
+              case Identity       => completeStage()
+            }
         }
       )
 
@@ -156,3 +164,7 @@ class TakePrefixFlow[A, T <: Seq[A]](n: Int)(
       )
     }
 }
+
+case class PrefixTooShortException[T](realPrefix: T, expectedLength: Int)
+    extends Exception(
+      s"Prefix is too short: expected $expectedLength bytes, got $realPrefix")

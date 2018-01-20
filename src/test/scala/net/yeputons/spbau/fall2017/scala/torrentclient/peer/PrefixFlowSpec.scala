@@ -226,5 +226,10 @@ class PrefixFlowSpec
     "prefix and messages are chunked arbitrary" in {
       run(5, "he", "l", "lowo", "rld") shouldBe Seq("hello", "wo", "rld")
     }
+    "prefix is longer than the message" in {
+      the[PrefixTooShortException[WrappedString]] thrownBy {
+        run(5, "hi", "me")
+      } shouldBe PrefixTooShortException[WrappedString]("hime", 5)
+    }
   }
 }
