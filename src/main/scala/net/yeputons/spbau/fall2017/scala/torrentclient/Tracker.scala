@@ -77,6 +77,11 @@ class Tracker(baseAnnounceUri: Uri,
       retryAfterDelay()
   }
 
+  override def unhandled(message: Any): Unit = {
+    log.error(s"Unhandled message, stopping: $message")
+    context.stop(self)
+  }
+
   def updatePeersList(): Unit = {
     timers.cancel(UpdateTimer)
 

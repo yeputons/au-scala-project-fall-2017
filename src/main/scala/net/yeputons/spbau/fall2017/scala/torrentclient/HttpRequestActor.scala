@@ -46,6 +46,11 @@ class HttpRequestActor(httpReadTimeout: FiniteDuration)
           s ! HttpRequestFailed(requestId, e)
       }
   }
+
+  override def unhandled(message: Any): Unit = {
+    log.error(s"Unhandled message, stopping: $message")
+    context.stop(self)
+  }
 }
 
 object HttpRequestActor {
