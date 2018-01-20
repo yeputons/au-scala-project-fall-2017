@@ -184,14 +184,38 @@ class PrefixFlowSpec
       Await
         .result(
           Source(immutable.Seq(data: _*).map(new WrappedString(_)))
-            .via(TakePrefixFlow[Char, WrappedString](n))
+            .via(new TakePrefixFlow[Char, WrappedString](n))
             .map(_.self)
             .runWith(Sink.seq),
           100.milliseconds
         )
 
-    "n=0" in {
-      run(0, "foo", "bar", "baz") shouldBe Seq("", "foo", "bar", "baz")
+    def runProbes(n: Int) =
+      TestSource
+        .probe[WrappedString]
+        .via(new TakePrefixFlow[Char, WrappedString](n))
+        .toMat(TestSink.probe[WrappedString])(Keep.both)
+        .run()
+
+    "n=0" must {
+      "send correct data" in {
+        run(0, "foo", "bar", "baz") shouldBe Seq("", "foo", "bar", "baz")
+      }
+      "send first value without pulling the input" in {
+        val (pub, sub) = runProbes(0)
+        sub.ensureSubscription()
+
+        sub.request(1)
+        sub.expectNext("")
+
+        sub.request(1)
+        sub.expectNoMessage(100.milliseconds)
+        pub.sendNext("hello")
+        sub.expectNext("hello")
+
+        pub.sendComplete()
+        sub.expectComplete()
+      }
     }
     "prefix is a separate message" in {
       run(2, "hi", "hello", "world") shouldBe Seq("hi", "hello", "world")
