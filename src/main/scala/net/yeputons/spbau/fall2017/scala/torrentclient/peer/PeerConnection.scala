@@ -98,7 +98,8 @@ object PeerConnection {
     * Creates [[Props]] for the [[PeerConnection]] actor which
     * will handle a TCP connection to a specific peer.
     * @param handler Actor which will receive [[ReceivedPeerMessage]] from the peer
-    * @param myPeerId Peer ID to specify in the handshake
+    * @param infoHash `info_hash` to use during handshake.
+    * @param myPeerId 20-byte [[ByteString]] specifying which peer id to use during handshake
     * @param otherPeer Connection information and optional peer id to be expected during the handshake
     */
   def props(handler: ActorRef,

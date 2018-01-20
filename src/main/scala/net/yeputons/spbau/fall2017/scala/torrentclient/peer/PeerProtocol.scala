@@ -41,6 +41,11 @@ object PeerProtocol {
     * Materializes to a `Future[HandshakeCompleted.type]` which completes right
     * after handshake is successfully completed (even if no data exchange follows),
     * and fails whenever the stream fails.
+    *
+    * @param infoHash `info_hash` to use during handshake. Protocol fails if it doesn't match peer's `info_hash`.
+    * @param myPeerId 20-byte [[ByteString]] specifying which peer id to use during handshake
+    * @param otherPeerId Optional 20-byte [[ByteString]] specifying which peer id
+    *                    do we expect from the other side. Protocol fails if it doesn't match.
     */
   def apply(infoHash: ByteString,
             myPeerId: ByteString,
