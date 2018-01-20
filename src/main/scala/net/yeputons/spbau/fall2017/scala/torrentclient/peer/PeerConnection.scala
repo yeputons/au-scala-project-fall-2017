@@ -21,6 +21,14 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandshake.Handsh
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
+/**
+  * Wraps a Akka Streams connection to a peer.  Stops whenever the stream
+  * fails or completes, logs events in the meantime. Passes all [[PeerMessage]]
+  * from the stream to `handler`, wrapped in [[ReceivedPeerMessage]]. Passes
+  * all [[SendPeerMessage]] to the stream.
+  * @param handler The actor which will receive [[PeerMessage]] from the stream
+  * @param connectionFactory Factory which constructs a connection [[Flow]]
+  */
 class PeerConnection(
     handler: ActorRef,
     connectionFactory: ActorSystem => Flow[PeerMessage,
@@ -74,9 +82,25 @@ class PeerConnection(
 }
 
 object PeerConnection {
+
+  /**
+    * Asks [[PeerConnection]] to send `msg` down the connection.
+    */
   case class SendPeerMessage(msg: PeerMessage)
+
+  /**
+    * Sent by [[PeerConnection]] to `handler` whenever
+    * `msg` is received from the connection.
+    */
   case class ReceivedPeerMessage(msg: PeerMessage)
 
+  /**
+    * Creates [[Props]] for the [[PeerConnection]] actor which
+    * will handle a TCP connection to a specific peer.
+    * @param handler Actor which will receive [[ReceivedPeerMessage]] from the peer
+    * @param myPeerId Peer ID to specify in the handshake
+    * @param otherPeer Connection information and optional peer id to be expected during the handshake
+    */
   def props(handler: ActorRef,
             infoHash: ByteString,
             myPeerId: ByteString,
