@@ -15,6 +15,11 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerMessage._
 
 import scala.collection.mutable
 
+/**
+  * Tracks a state of a BitTorrent peer. Stops whenever connection stops.
+  * @param connectionFactory Creates a [[PeerConnection]] actor which sends
+  *                          messages to the second argument of the factory.
+  */
 class PeerHandler(connectionFactory: (ActorRefFactory, ActorRef) => ActorRef)
     extends Actor
     with ActorLogging {
@@ -76,6 +81,11 @@ class PeerHandler(connectionFactory: (ActorRefFactory, ActorRef) => ActorRef)
 }
 
 object PeerHandler {
+  /**
+    * Creates [[Props]] for the [[PeerHandler]] actor for establishing TCP
+    * connection with a BitTorrent peer. Parameters are directly passed
+    * to [[PeerConnection]].
+    */
   def props(infoHash: ByteString,
             myPeerId: ByteString,
             otherPeer: PeerInformation) =
