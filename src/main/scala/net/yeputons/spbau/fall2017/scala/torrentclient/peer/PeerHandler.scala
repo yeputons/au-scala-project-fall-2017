@@ -82,7 +82,8 @@ object PeerHandler {
       new PeerHandler({
         case (factory, parent) =>
           factory.actorOf(
-            PeerConnection.props(parent, infoHash, myPeerId, otherPeer))
+            PeerConnection.props(parent, infoHash, myPeerId, otherPeer),
+            "conn")
       })
     )
 }
