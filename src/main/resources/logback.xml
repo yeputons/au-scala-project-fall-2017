@@ -1,0 +1,34 @@
+<configuration>
+    <appender name="StandardStdout" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator>
+                <expression>return mdc.get("akkaSource") == null;</expression>
+            </evaluator>
+            <OnMismatch>DENY</OnMismatch>
+            <OnMatch>NEUTRAL</OnMatch>
+        </filter>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS,UTC}UTC %-5level %-36logger{36} [%thread] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="AkkaStdout" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator>
+                <expression>return mdc.get("akkaSource") != null;</expression>
+            </evaluator>
+            <OnMismatch>DENY</OnMismatch>
+            <OnMatch>NEUTRAL</OnMatch>
+        </filter>
+        <encoder>
+            <pattern>%X{akkaTimestamp} %-5level %-36logger{36} [%X{akkaSource}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="net.yeputons.spbau.fall2017.scala.torrentclient" level="DEBUG"/>
+
+    <root level="INFO">
+        <appender-ref ref="StandardStdout" />
+        <appender-ref ref="AkkaStdout" />
+    </root>
+</configuration>
