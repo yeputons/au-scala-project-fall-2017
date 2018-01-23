@@ -6,7 +6,7 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.testkit.TestKit
 import akka.util.ByteString
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.PeerMessage.PieceId
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.PeerMessage.BlockId
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable
@@ -165,8 +165,8 @@ class PeerProtocolSpec
     }
   }
 
-  private val pieceId = PieceId(1234, 5678, 9012)
-  private val pieceIdSerialized = ByteString(
+  private val blockId = BlockId(1234, 5678, 9012)
+  private val blockIdSerialized = ByteString(
     0x00, 0x00, 0x04, 0xD2, 0x00, 0x00, 0x16, 0x2E, 0x00, 0x00, 0x23, 0x34
   )
 
@@ -187,18 +187,18 @@ class PeerProtocolSpec
       // 0110 0000 | 0010 1000
       ByteString(5, 0x60, 0x28)
     ),
-    "PieceRequest" -> (
-      PeerMessage.PieceRequest(pieceId),
-      ByteString(6) ++ pieceIdSerialized
+    "BlockRequest" -> (
+      PeerMessage.BlockRequest(blockId),
+      ByteString(6) ++ blockIdSerialized
     ),
-    "PieceAvailable" -> (
-      PeerMessage.PieceAvailable(PieceId(1234, 5678, 9012),
+    "BlockAvailable" -> (
+      PeerMessage.BlockAvailable(BlockId(1234, 5678, 9012),
                                  ByteString(10, 20, 30, 40, 50)),
-      ByteString(7) ++ pieceIdSerialized ++ ByteString(10, 20, 30, 40, 50)
+      ByteString(7) ++ blockIdSerialized ++ ByteString(10, 20, 30, 40, 50)
     ),
-    "PieceRequestCancel" -> (
-      PeerMessage.PieceRequestCancel(pieceId),
-      ByteString(8) ++ pieceIdSerialized
+    "BlockRequestCancel" -> (
+      PeerMessage.BlockRequestCancel(blockId),
+      ByteString(8) ++ blockIdSerialized
     ),
   )
 
