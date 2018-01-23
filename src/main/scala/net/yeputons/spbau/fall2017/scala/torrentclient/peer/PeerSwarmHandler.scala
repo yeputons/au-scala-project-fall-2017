@@ -1,14 +1,18 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient.peer
 
+import java.net.URLEncoder
+
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{
   Actor,
   ActorLogging,
   ActorRef,
   OneForOneStrategy,
+  Props,
   SupervisorStrategy,
   Terminated
 }
+import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler._
 
@@ -77,4 +81,15 @@ object PeerSwarmHandler {
   case object PieceStatisticsRequest
 
   case class PieceStatisticsResponse(actorsWithPiece: Map[Int, Int])
+
+  def props(infoHash: ByteString, myPeerId: ByteString): Props =
+    Props(new PeerSwarmHandlerImpl(infoHash, myPeerId))
+
+  private class PeerSwarmHandlerImpl(infoHash: ByteString, myPeerId: ByteString)
+      extends PeerSwarmHandler {
+    override def createPeerActor(peer: PeerInformation): ActorRef = {
+      val name = URLEncoder.encode(peer.address.getHostString, "ASCII") + "_" + peer.address.getPort
+      context.actorOf(PeerHandler.props(self, infoHash, myPeerId, peer), name)
+    }
+  }
 }
