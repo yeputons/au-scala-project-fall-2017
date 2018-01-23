@@ -19,16 +19,23 @@ class PeerHandlerSpec
     extends TestKit(ActorSystem("PeerHandlerSpec"))
     with WordSpecLike {
   "PeerHandler" must {
-    "create connection on start, handle data, stop on connection stop" in {
+    def fixture = new {
       val watcher = TestProbe()
       val connection = TestProbe()
       val connectionCreated = Promise[Unit]
+      val swarmHandler = TestProbe()
       val handler = system.actorOf(
         PeerHandlerWithMock
-          .props(connection.ref, connectionCreated, TestProbe().ref))
+          .props(connection.ref, connectionCreated, swarmHandler.ref))
       watcher.watch(handler)
 
       Await.result(connectionCreated.future, 100.milliseconds)
+    }
+
+    "create connection on start, handle data, stop on connection stop" in {
+      val f = fixture
+      import f._
+
       connection.send(handler, ReceivedPeerMessage(KeepAlive))
       connection.send(handler, ReceivedPeerMessage(Unchoke))
 
@@ -38,13 +45,8 @@ class PeerHandlerSpec
     }
 
     "pass data about pieces to swarm handler" in {
-      val connection = TestProbe()
-      val connectionCreated = Promise[Unit]
-      val swarmHandler = TestProbe()
-      val handler = system.actorOf(
-        PeerHandlerWithMock
-          .props(connection.ref, connectionCreated, swarmHandler.ref))
-      Await.result(connectionCreated.future, 100.milliseconds)
+      val f = fixture
+      import f._
 
       connection.send(handler, ReceivedPeerMessage(HasPieces(Set(10, 20, 30))))
       swarmHandler.expectMsg(AddPieces(Set(10, 20, 30)))
