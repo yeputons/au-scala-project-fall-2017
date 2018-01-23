@@ -27,6 +27,9 @@
 
     <logger name="net.yeputons.spbau.fall2017.scala.torrentclient" level="DEBUG"/>
 
+    <logger name="net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection" level="INFO"/>
+    <logger name="net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler" level="INFO"/>
+
     <root level="INFO">
         <appender-ref ref="StandardStdout" />
         <appender-ref ref="AkkaStdout" />
