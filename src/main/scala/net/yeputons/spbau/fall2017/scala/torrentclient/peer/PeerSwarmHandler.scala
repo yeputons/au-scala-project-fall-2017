@@ -32,6 +32,7 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
         val actor = createPeerActor(peer)
         actorByPeer += peer -> actor
         peerByActor += actor -> peer
+        piecesOfActor.put(actor, mutable.Set.empty)
         context.watch(actor)
       }
     case AddPieces(pieces) =>
@@ -39,7 +40,7 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
       if (peerByActor.contains(actor)) {
         pieces.foreach(piece =>
           actorsWithPiece.getOrElseUpdate(piece, mutable.Set.empty) += actor)
-        piecesOfActor.getOrElseUpdate(actor, mutable.Set.empty) ++= pieces
+        piecesOfActor(actor) ++= pieces
       } else {
         log.debug(s"Unexpected AddPieces message from $actor")
       }
@@ -47,7 +48,7 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
       val actor = sender()
       if (peerByActor.contains(actor)) {
         pieces.foreach(piece => actorsWithPiece.get(piece).foreach(_ -= actor))
-        piecesOfActor.get(actor).foreach(_ --= pieces)
+        piecesOfActor(actor) --= pieces
       } else {
         log.debug(s"Unexpected RemovePieces message from $actor")
       }
@@ -56,9 +57,8 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
       log.debug(s"Actor for $peer terminated, ${actorByPeer.size - 1} peers left")
       actorByPeer -= peer
       peerByActor -= actor
-      piecesOfActor.get(actor).foreach { pieces =>
-        pieces.foreach(piece => actorsWithPiece.get(piece).foreach(_ -= actor))
-      }
+      piecesOfActor(actor).foreach(piece =>
+        actorsWithPiece.get(piece).foreach(_ -= actor))
       piecesOfActor -= actor
 
     case PieceStatisticsRequest =>
