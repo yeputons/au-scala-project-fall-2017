@@ -53,7 +53,7 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
       }
     case Terminated(actor) =>
       val peer = peerByActor(actor)
-      log.debug(s"Actor for $peer terminated, ${actorByPeer.size} peers left")
+      log.debug(s"Actor for $peer terminated, ${actorByPeer.size - 1} peers left")
       actorByPeer -= peer
       peerByActor -= actor
       piecesOfActor.get(actor).foreach { pieces =>
