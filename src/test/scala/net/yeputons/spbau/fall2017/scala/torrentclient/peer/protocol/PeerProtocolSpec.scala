@@ -1,18 +1,17 @@
-package net.yeputons.spbau.fall2017.scala.torrentclient.peer
+package net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol
 
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, Materializer}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
+import akka.stream.{ActorMaterializer, Materializer}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.PeerMessage.PieceId
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol._
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable
-import scala.concurrent.{Await, Future, TimeoutException}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future, TimeoutException}
 
 class PeerProtocolSpec
     extends TestKit(ActorSystem("peerProtocolSpec"))
@@ -48,7 +47,7 @@ class PeerProtocolSpec
     }
   }
 
-  "PeerFraming atop Handshake" must {
+  "Framing atop Handshake" must {
     "work when looped" in {
       val loop = Framing()
         .atop(Handshake(infoHash, myPeerId, Some(otherPeerId)))
@@ -203,7 +202,7 @@ class PeerProtocolSpec
     ),
   )
 
-  "PeerMessagesParsing" when {
+  "MessagesParsing" when {
     for ((key, (message, encoded)) <- examples) {
       f"working with $key" must {
         "encode" in {

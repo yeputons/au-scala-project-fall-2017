@@ -1,17 +1,16 @@
-package net.yeputons.spbau.fall2017.scala.torrentclient.peer
+package net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.{ExpectPrefixFlow, PrefixMismatchException, PrefixTooShortException, TakePrefixFlow}
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable
 import scala.collection.immutable.WrappedString
-import scala.concurrent.{Await, TimeoutException}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, TimeoutException}
 import scala.util.Failure
 
 class PrefixFlowSpec
