@@ -8,13 +8,10 @@ import akka.pattern.ask
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker
-import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
-  GetPeers,
-  PeerInformation,
-  PeersListResponse
-}
+import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{GetPeers, PeerInformation, PeersListResponse}
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler.AddPeer
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.{PeerHandler, PeerSwarmHandler}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, _}
@@ -75,18 +72,11 @@ object ShowPeersForTorrentApp {
     }
     tracker ! PoisonPill
 
-    System.out.println(s"Got some peers:\n$peers")
-    peers.foreach { peer =>
-      System.out.println(f"Connecting to $peer...")
-      val peerActor = actorSystem.actorOf(
-        PeerHandler.props(ActorRef.noSender,
-                          ByteString(infoHash),
-                          ByteString("01234567890123456789"),
-                          peer),
-        java.net.URLEncoder.encode(peer.address.getHostString, "ASCII") +
-          "_" + peer.address.getPort
-      )
-    }
+    val swarm = actorSystem.actorOf(
+      PeerSwarmHandler.props(ByteString(infoHash),
+                             ByteString("01234567890123456789")),
+      "swarm")
+    peers.foreach(swarm ! AddPeer(_))
     // Do not terminate the actor system
   }
 }
