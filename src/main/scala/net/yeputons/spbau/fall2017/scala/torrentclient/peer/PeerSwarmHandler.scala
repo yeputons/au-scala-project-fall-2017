@@ -14,12 +14,8 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
   val actorByPeer = mutable.Map.empty[PeerInformation, ActorRef]
   val peerByActor = mutable.Map.empty[ActorRef, PeerInformation]
 
-  val actorsWithPiece = mutable.Map
-    .empty[Int, mutable.Set[ActorRef]]
-    .withDefaultValue(mutable.Set.empty)
-  val piecesOfActor = mutable.Map
-    .empty[ActorRef, mutable.Set[Int]]
-    .withDefaultValue(mutable.Set.empty)
+  val actorsWithPiece = mutable.Map.empty[Int, mutable.Set[ActorRef]]
+  val piecesOfActor = mutable.Map.empty[ActorRef, mutable.Set[Int]]
 
   def createPeerActor(peer: PeerInformation): ActorRef
 
@@ -41,16 +37,17 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
     case AddPieces(pieces) =>
       val actor = sender()
       if (peerByActor.contains(actor)) {
-        piecesOfActor(actor) ++= pieces
-        pieces.foreach(actorsWithPiece(_) += actor)
+        pieces.foreach(piece =>
+          actorsWithPiece.getOrElseUpdate(piece, mutable.Set.empty) += actor)
+        piecesOfActor.getOrElseUpdate(actor, mutable.Set.empty) ++= pieces
       } else {
         log.debug(s"Unexpected AddPieces message from $actor")
       }
     case RemovePieces(pieces) =>
       val actor = sender()
       if (peerByActor.contains(actor)) {
-        piecesOfActor(actor) --= pieces
-        pieces.foreach(actorsWithPiece(_) -= actor)
+        pieces.foreach(piece => actorsWithPiece.get(piece).foreach(_ -= actor))
+        piecesOfActor.get(actor).foreach(_ --= pieces)
       } else {
         log.debug(s"Unexpected RemovePieces message from $actor")
       }
@@ -60,7 +57,7 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
       actorByPeer -= peer
       peerByActor -= actor
       piecesOfActor.get(actor).foreach { pieces =>
-        pieces.foreach(actorsWithPiece(_) -= actor)
+        pieces.foreach(piece => actorsWithPiece.get(piece).foreach(_ -= actor))
       }
       piecesOfActor -= actor
 
