@@ -80,3 +80,35 @@ object BDict {
 
   def empty: BDict = BDict(Map.empty[immutable.Seq[Byte], BEntry])
 }
+
+object BEntry {
+  implicit class Conversions(entry: BEntry) {
+    def getByteString: Seq[Byte] = entry match {
+      case BByteString(value) => value
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Expected BByteString, found ${entry.getClass}")
+    }
+
+    def getNumber: Long = entry match {
+      case BNumber(value) => value
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Expected BNumber, found ${entry.getClass}")
+    }
+
+    def getList: BList = entry match {
+      case l: BList => l
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Expected BList, found ${entry.getClass}")
+    }
+
+    def getDict: BDict = entry match {
+      case x: BDict => x
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Expected BDict, found ${entry.getClass}")
+    }
+  }
+}
