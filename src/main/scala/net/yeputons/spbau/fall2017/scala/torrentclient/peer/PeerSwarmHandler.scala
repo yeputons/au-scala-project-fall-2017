@@ -18,8 +18,8 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
   val actorByPeer = mutable.Map.empty[PeerInformation, ActorRef]
   val peerByActor = mutable.Map.empty[ActorRef, PeerInformation]
 
-  val actorsWithPiece = mutable.Map.empty[Int, mutable.Set[ActorRef]]
-  val piecesOfActor = mutable.Map.empty[ActorRef, mutable.Set[Int]]
+  val actorsWithPiece = mutable.Map.empty[Int, mutable.Set[ActorRef]].withDefaultValue(mutable.Set.empty)
+  val piecesOfActor = mutable.Map.empty[ActorRef, mutable.Set[Int]].withDefaultValue(mutable.Set.empty)
 
   def createActor(peer: PeerInformation): ActorRef
 
@@ -58,7 +58,9 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
       log.debug(s"Actor for $peer terminated")
       actorByPeer -= peer
       peerByActor -= actor
-      piecesOfActor(actor).foreach(actorsWithPiece(_) -= actor)
+      piecesOfActor.get(actor).foreach { pieces =>
+        pieces.foreach(actorsWithPiece(_) -= actor)
+      }
       piecesOfActor -= actor
 
     case PieceStatisticsRequest =>
