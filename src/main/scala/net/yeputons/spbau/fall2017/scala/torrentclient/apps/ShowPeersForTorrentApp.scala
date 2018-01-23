@@ -65,6 +65,14 @@ object ShowPeersForTorrentApp {
     val infoHash: Array[Byte] = MessageDigest
       .getInstance("SHA-1")
       .digest(BencodeEncoder(torrentInfo).toArray)
+    val piecesCount = torrentInfo("pieces") match {
+      case BByteString(hashes) =>
+        assert(hashes.length % 20 == 0)
+        hashes.length / 20
+      case x =>
+        throw new IllegalArgumentException(
+          s"Expected string in info.pieces, found $x")
+    }
 
     val actorSystem = ActorSystem("show-peers-for-torrent")
     val tracker =
@@ -85,7 +93,8 @@ object ShowPeersForTorrentApp {
 
     val swarm = actorSystem.actorOf(
       PeerSwarmHandler.props(ByteString(infoHash),
-                             ByteString("01234567890123456789")),
+                             ByteString("01234567890123456789"),
+                             piecesCount),
       "swarm")
     peers.foreach(swarm ! AddPeer(_))
 
@@ -98,8 +107,8 @@ object ShowPeersForTorrentApp {
       if (peersWithPiece.nonEmpty) {
         log.info(
           s"Each piece is available on " +
-            s"${peersWithPiece.values.min}..${peersWithPiece.values.max} peers " +
-            s"average is ${peersWithPiece.values.sum / peersWithPiece.values.size}"
+            s"${peersWithPiece.min}..${peersWithPiece.max} peers " +
+            s"average is ${peersWithPiece.sum / peersWithPiece.size}"
         )
       }
       if (piecesOfPeer.nonEmpty) {
