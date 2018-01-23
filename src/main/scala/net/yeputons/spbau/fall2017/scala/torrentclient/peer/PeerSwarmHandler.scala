@@ -72,6 +72,11 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
         }.toMap
       )
   }
+
+  override def unhandled(message: Any): Unit = {
+    log.error(s"Unhandled message, stopping: $message")
+    context.stop(self)
+  }
 }
 
 object PeerSwarmHandler {
