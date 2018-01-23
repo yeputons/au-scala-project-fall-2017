@@ -10,14 +10,16 @@ import scala.collection.mutable
 
 /**
   * Tracks a state of a BitTorrent peer. Stops whenever connection stops.
-  * @param connectionFactory Creates a [[PeerConnection]] actor which sends
-  *                          messages to the second argument of the factory.
+  *
+  * Allows mocking of the connection actor in tests via abstract `def createConnection`.
+  * See [[net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler.PeerTcpHandler]]
+  * for the default implementation which uses [[PeerConnection]].
   */
-class PeerHandler(connectionFactory: (ActorRefFactory, ActorRef) => ActorRef)
-    extends Actor
-    with ActorLogging {
+abstract class PeerHandler() extends Actor with ActorLogging {
 
-  val connection = connectionFactory(context, self)
+  def createConnection(): ActorRef
+
+  val connection: ActorRef = createConnection()
   context.watch(connection)
 
   var otherChoked = true
@@ -78,17 +80,19 @@ object PeerHandler {
   /**
     * Creates [[Props]] for the [[PeerHandler]] actor for establishing TCP
     * connection with a BitTorrent peer. Parameters are directly passed
-    * to [[PeerConnection]].
+    * to [[PeerConnection.props]].
     */
   def props(infoHash: ByteString,
             myPeerId: ByteString,
             otherPeer: PeerInformation) =
-    Props(
-      new PeerHandler({
-        case (factory, parent) =>
-          factory.actorOf(
-            PeerConnection.props(parent, infoHash, myPeerId, otherPeer),
-            "conn")
-      })
-    )
+    Props(new PeerTcpHandler(infoHash, myPeerId, otherPeer))
+
+  class PeerTcpHandler(infoHash: ByteString,
+                       myPeerId: ByteString,
+                       otherPeer: PeerInformation)
+      extends PeerHandler {
+    override def createConnection(): ActorRef =
+      context.actorOf(PeerConnection.props(self, infoHash, myPeerId, otherPeer),
+                      "conn")
+  }
 }
