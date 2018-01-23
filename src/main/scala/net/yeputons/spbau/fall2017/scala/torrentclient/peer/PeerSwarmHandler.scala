@@ -22,8 +22,12 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
   val actorByPeer = mutable.Map.empty[PeerInformation, ActorRef]
   val peerByActor = mutable.Map.empty[ActorRef, PeerInformation]
 
-  val actorsWithPiece = mutable.Map.empty[Int, mutable.Set[ActorRef]].withDefaultValue(mutable.Set.empty)
-  val piecesOfActor = mutable.Map.empty[ActorRef, mutable.Set[Int]].withDefaultValue(mutable.Set.empty)
+  val actorsWithPiece = mutable.Map
+    .empty[Int, mutable.Set[ActorRef]]
+    .withDefaultValue(mutable.Set.empty)
+  val piecesOfActor = mutable.Map
+    .empty[ActorRef, mutable.Set[Int]]
+    .withDefaultValue(mutable.Set.empty)
 
   def createPeerActor(peer: PeerInformation): ActorRef
 
