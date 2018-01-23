@@ -21,7 +21,7 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
   val actorsWithPiece = mutable.Map.empty[Int, mutable.Set[ActorRef]].withDefaultValue(mutable.Set.empty)
   val piecesOfActor = mutable.Map.empty[ActorRef, mutable.Set[Int]].withDefaultValue(mutable.Set.empty)
 
-  def createActor(peer: PeerInformation): ActorRef
+  def createPeerActor(peer: PeerInformation): ActorRef
 
   override def supervisorStrategy: SupervisorStrategy =
     OneForOneStrategy() {
@@ -32,7 +32,7 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
     case AddPeer(peer) =>
       if (!actorByPeer.contains(peer)) {
         log.debug(s"Creating new actor for $peer")
-        val actor = createActor(peer)
+        val actor = createPeerActor(peer)
         actorByPeer += peer -> actor
         peerByActor += actor -> peer
         context.watch(actor)
