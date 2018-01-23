@@ -35,6 +35,11 @@ abstract class PeerHandler(swarmHandler: ActorRef)
   val connection: ActorRef = createConnection()
   context.watch(connection)
 
+  val downloadQueue = mutable.Map.empty[BlockId, mutable.Set[ActorRef]]
+  val downloading = mutable.Map.empty[BlockId, mutable.Set[ActorRef]]
+
+  var meInterested = false
+
   var otherChoked = true
   var otherInterested = false
   val otherAvailable = mutable.Set.empty[Int]
@@ -56,6 +61,15 @@ abstract class PeerHandler(swarmHandler: ActorRef)
     case NoMessages =>
       log.debug("No messages received for a long time, stopping")
       context.stop(self)
+    case DownloadBlock(blockId) =>
+      if (downloading.contains(blockId)) {
+        log.debug(s"Download request for $blockId, already downloading")
+        downloading(blockId) += sender()
+      } else {
+        log.debug(s"Download request for $blockId, add to queue")
+        downloadQueue.getOrElseUpdate(blockId, mutable.Set.empty) += sender()
+        sendDownloadRequest()
+      }
     case ReceivedPeerMessage(msg) =>
       timers.startSingleTimer(NoMessagesTimer, NoMessages, keepAliveTimeout)
       msg match {
@@ -64,9 +78,11 @@ abstract class PeerHandler(swarmHandler: ActorRef)
         case Choke =>
           otherChoked = true
           log.debug("Peer choked")
+          abortDownloads()
         case Unchoke =>
           otherChoked = false
           log.debug("Peer unchoked")
+          sendDownloadRequest()
         case Interested =>
           otherInterested = true
           log.debug("Peer is interested")
@@ -91,8 +107,58 @@ abstract class PeerHandler(swarmHandler: ActorRef)
         case BlockRequestCancel(blockId) =>
           log.debug(s"Peer cancelled request for $blockId")
         case BlockAvailable(blockId, data) =>
-          log.debug(s"Received a $blockId: ${data.length} bytes")
+          val actors = downloading.getOrElse(blockId, Set.empty)
+          log.debug(
+            s"Received a $blockId: ${data.length} bytes, sending to ${actors.size} actors")
+          actors.foreach(_ ! BlockDownloaded(blockId, data))
+          downloading -= blockId
+          updateInterested()
       }
+  }
+
+  def abortDownloads(): Unit = {
+    if (downloading.nonEmpty) {
+      log.debug(
+        s"Aborting downloads for: ${downloading.keys}, moved back to queue")
+      downloading.foreach {
+        case (blockId, actors) =>
+          downloadQueue.getOrElseUpdate(blockId, mutable.Set.empty) ++= actors
+      }
+      downloading.clear()
+    }
+  }
+
+  def sendDownloadRequest(): Unit = {
+    updateInterested()
+    if (downloadQueue.nonEmpty) {
+      if (otherChoked) {
+        log.debug(s"Don't request ${downloadQueue.size} blocks because peer is choked")
+      } else {
+        downloadQueue.foreach {
+          case (block, actors) =>
+            log.debug(s"Requesting $block")
+            connection ! SendPeerMessage(BlockRequest(block))
+            downloading.getOrElseUpdate(block, mutable.Set.empty) ++= actors
+        }
+        downloadQueue.clear()
+      }
+    }
+  }
+
+  def updateInterested(): Unit = {
+    if (downloading.isEmpty && downloadQueue.isEmpty) {
+      if (meInterested) {
+        log.debug("Sending NotInterested")
+        connection ! SendPeerMessage(NotInterested)
+        meInterested = false
+      }
+    } else {
+      if (!meInterested) {
+        log.debug("Sending Interested")
+        connection ! SendPeerMessage(Interested)
+        meInterested = true
+      }
+    }
   }
 
   override def unhandled(message: Any): Unit = {
@@ -102,6 +168,9 @@ abstract class PeerHandler(swarmHandler: ActorRef)
 }
 
 object PeerHandler {
+  case class DownloadBlock(blockId: BlockId)
+
+  case class BlockDownloaded(blockId: BlockId, data: ByteString)
 
   /**
     * Creates [[Props]] for the [[PeerHandler]] actor for establishing TCP
