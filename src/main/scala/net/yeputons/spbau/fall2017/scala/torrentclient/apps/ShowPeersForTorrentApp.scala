@@ -1,15 +1,16 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient.apps
 
 import java.nio.file.{Files, Paths}
-import java.security.MessageDigest
 
 import akka.actor.{ActorSystem, PoisonPill}
 import akka.pattern.ask
-import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
-import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker
-import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{GetPeers, PeerInformation, PeersListResponse}
-import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
+import net.yeputons.spbau.fall2017.scala.torrentclient.{Torrent, Tracker}
+import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
+  GetPeers,
+  PeerInformation,
+  PeersListResponse
+}
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler._
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler
 import org.slf4j.LoggerFactory
@@ -19,7 +20,8 @@ import scala.concurrent.duration.{Duration, _}
 
 object ShowPeersForTorrentApp {
   val log = LoggerFactory.getLogger(getClass)
-  implicit val executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
+  implicit val executionContext: ExecutionContext =
+    scala.concurrent.ExecutionContext.global
 
   def main(args: Array[String]): Unit = {
     if (args.length != 1) {
@@ -35,41 +37,12 @@ object ShowPeersForTorrentApp {
       sys.exit(1)
     }
     val torrentBytes: Array[Byte] = Files.readAllBytes(Paths.get(args(0)))
-    val torrentData: BDict = BencodeDecoder(torrentBytes) match {
-      case Right(x: BDict) => x
-      case Right(_) =>
-        System.err.println(
-          s"Invalid .torrent file: expected top-level dictionary")
-        sys.exit(1)
-      case Left(msg) =>
-        System.err.println(s"Invalid .torrent file: $msg")
-        sys.exit(1)
-    }
-    if (BencodeEncoder(torrentData) != torrentBytes.toSeq) {
-      System.err.println(".torrent file is not a valid Bencode!")
-      sys.exit(1)
-    }
-
-    val torrentInfo = torrentData("info").asInstanceOf[BDict]
-    val baseAnnounceUri = Uri(
-      new String(
-        torrentData("announce").asInstanceOf[BByteString].value.toArray,
-        "UTF-8"))
-    val infoHash: Array[Byte] = MessageDigest
-      .getInstance("SHA-1")
-      .digest(BencodeEncoder(torrentInfo).toArray)
-    val piecesCount = torrentInfo("pieces") match {
-      case BByteString(hashes) =>
-        assert(hashes.length % 20 == 0)
-        hashes.length / 20
-      case x =>
-        throw new IllegalArgumentException(
-          s"Expected string in info.pieces, found $x")
-    }
+    val torrent: Torrent = Torrent(torrentBytes)
 
     val actorSystem = ActorSystem("show-peers-for-torrent")
     val tracker =
-      actorSystem.actorOf(Tracker.props(baseAnnounceUri, infoHash), "tracker")
+      actorSystem.actorOf(Tracker.props(torrent.announce, torrent.infoHash),
+                          "tracker")
     implicit val timeout: Timeout = Timeout(5.seconds)
 
     val random = new scala.util.Random()
@@ -85,9 +58,9 @@ object ShowPeersForTorrentApp {
     tracker ! PoisonPill
 
     val swarm = actorSystem.actorOf(
-      PeerSwarmHandler.props(ByteString(infoHash),
+      PeerSwarmHandler.props(ByteString(torrent.infoHash.toArray),
                              ByteString("01234567890123456789"),
-                             piecesCount),
+                             torrent.pieceHashes.size),
       "swarm")
     peers.foreach(swarm ! AddPeer(_))
 
@@ -111,7 +84,8 @@ object ShowPeersForTorrentApp {
             s"average is ${piecesOfPeer.values.sum / piecesOfPeer.values.size}"
         )
       }
-      (swarm ? PeerForPieceRequest(0)).map { case PeerForPieceResponse(0, peer) =>
+      (swarm ? PeerForPieceRequest(0)).map {
+        case PeerForPieceResponse(0, peer) =>
           log.info(s"Current peer for piece 0 is $peer")
       }
     }
