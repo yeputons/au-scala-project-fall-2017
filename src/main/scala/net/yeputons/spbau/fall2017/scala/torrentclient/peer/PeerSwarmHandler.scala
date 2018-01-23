@@ -31,7 +31,8 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
   override def receive: Receive = {
     case AddPeer(peer) =>
       if (!actorByPeer.contains(peer)) {
-        log.debug(s"Creating new actor for $peer")
+        log.debug(
+          s"Creating new actor for $peer, now there will be ${actorByPeer.size + 1} peers")
         val actor = createPeerActor(peer)
         actorByPeer += peer -> actor
         peerByActor += actor -> peer
@@ -55,7 +56,7 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
       }
     case Terminated(actor) =>
       val peer = peerByActor(actor)
-      log.debug(s"Actor for $peer terminated")
+      log.debug(s"Actor for $peer terminated, ${actorByPeer.size} peers left")
       actorByPeer -= peer
       peerByActor -= actor
       piecesOfActor.get(actor).foreach { pieces =>
@@ -64,9 +65,12 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
       piecesOfActor -= actor
 
     case PieceStatisticsRequest =>
-      sender() ! PieceStatisticsResponse(actorsWithPiece.map {
-        case (piece, actors) => (piece, actors.size)
-      }.toMap)
+      sender() ! PieceStatisticsResponse(
+        actorsWithPiece.mapValues(_.size).toMap,
+        piecesOfActor.map {
+          case (actor, pieces) => (peerByActor(actor), pieces.size)
+        }.toMap
+      )
   }
 }
 
@@ -76,7 +80,8 @@ object PeerSwarmHandler {
   case class RemovePieces(pieces: Set[Int])
   case object PieceStatisticsRequest
 
-  case class PieceStatisticsResponse(actorsWithPiece: Map[Int, Int])
+  case class PieceStatisticsResponse(peersWithPiece: Map[Int, Int],
+                                     piecesOfPeer: Map[PeerInformation, Int])
 
   def props(infoHash: ByteString, myPeerId: ByteString): Props =
     Props(new PeerSwarmHandlerImpl(infoHash, myPeerId))
