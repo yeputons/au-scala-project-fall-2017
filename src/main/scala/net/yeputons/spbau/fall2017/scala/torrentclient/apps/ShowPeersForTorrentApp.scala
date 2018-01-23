@@ -8,15 +8,26 @@ import akka.pattern.ask
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker
-import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{GetPeers, PeerInformation, PeersListResponse}
+import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
+  GetPeers,
+  PeerInformation,
+  PeersListResponse
+}
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler.AddPeer
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.{PeerHandler, PeerSwarmHandler}
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler.{
+  AddPeer,
+  PieceStatisticsRequest,
+  PieceStatisticsResponse
+}
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, _}
 
 object ShowPeersForTorrentApp {
+  val log = LoggerFactory.getLogger(getClass)
+
   def main(args: Array[String]): Unit = {
     if (args.length != 1) {
       System.err.println(
@@ -77,6 +88,29 @@ object ShowPeersForTorrentApp {
                              ByteString("01234567890123456789")),
       "swarm")
     peers.foreach(swarm ! AddPeer(_))
+
+    while (true) {
+      Thread.sleep(10000)
+      val PieceStatisticsResponse(peersWithPiece, piecesOfPeer) =
+        Await.result(swarm ? PieceStatisticsRequest, 1000.milliseconds)
+      log.info(
+        s"Know about ${peersWithPiece.size} pieces and ${piecesOfPeer.size} peers")
+      if (peersWithPiece.nonEmpty) {
+        log.info(
+          s"Each piece is available on " +
+            s"${peersWithPiece.values.min}..${peersWithPiece.values.max} peers " +
+            s"average is ${peersWithPiece.values.sum / peersWithPiece.values.size}"
+        )
+      }
+      if (piecesOfPeer.nonEmpty) {
+        log.info(
+          s"Each peer holds between " +
+            s"${piecesOfPeer.values.min} and ${piecesOfPeer.values.max} pieces, " +
+            s"average is ${piecesOfPeer.values.sum / piecesOfPeer.values.size}"
+        )
+      }
+    }
+
     // Do not terminate the actor system
   }
 }
