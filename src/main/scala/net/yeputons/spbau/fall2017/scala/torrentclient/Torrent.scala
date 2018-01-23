@@ -7,9 +7,16 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 
 case class Torrent(announce: Uri,
                    infoHash: Seq[Byte],
-                   pieceLength: Int,
+                   basePieceLength: Int,
                    pieceHashes: Seq[Seq[Byte]],
-                   fileLength: Long)
+                   fileLength: Long) {
+  def pieceLength(id: Int): Int = {
+    val pieceStart = id * basePieceLength
+    val pieceEnd =
+      math.min(pieceStart + basePieceLength, fileLength)
+    (pieceEnd - pieceStart).toInt
+  }
+}
 
 object Torrent {
   def apply(torrentFile: BEntry): Torrent = {
@@ -24,7 +31,7 @@ object Torrent {
       .getInstance("SHA-1")
       .digest(BencodeEncoder(info).toArray)
 
-    val pieceLength = info("piece length").getNumber.toInt
+    val basePieceLength = info("piece length").getNumber.toInt
 
     val pieces = info("pieces").getByteString
     require(pieces.length % 20 == 0)
@@ -32,7 +39,7 @@ object Torrent {
 
     val fileLength = info("length").getNumber
 
-    Torrent(announce, infoHash, pieceLength, pieceHashes, fileLength)
+    Torrent(announce, infoHash, basePieceLength, pieceHashes, fileLength)
   }
 
   def apply(torrentBytes: Seq[Byte]): Torrent = {
