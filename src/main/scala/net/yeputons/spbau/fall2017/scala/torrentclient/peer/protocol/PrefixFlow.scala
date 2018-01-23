@@ -41,7 +41,7 @@ object ExpectPrefixFlow {
       .via(new TakePrefixFlow[A, T](prefixLength))
       .prefixAndTail(1)
       .map {
-        case x @ (immutable.Seq(realPrefix), tail) =>
+        case _ @(immutable.Seq(realPrefix), tail) =>
           prefixPredicate(realPrefix) match {
             case Success(()) =>
             case Failure(t)  => throw t
@@ -125,7 +125,7 @@ class TakePrefixFlow[A, T <: Seq[A]](n: Int)(
                 Identity
               }
             }
-          case UnsentChunk(chunk) =>
+          case UnsentChunk(_) =>
             throw new IllegalStateException(
               "Should not ever push from UnsentChunk state")
           case Identity =>
