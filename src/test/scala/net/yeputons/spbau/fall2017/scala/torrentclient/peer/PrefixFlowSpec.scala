@@ -5,6 +5,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.{ExpectPrefixFlow, PrefixMismatchException, PrefixTooShortException, TakePrefixFlow}
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable

@@ -1,4 +1,4 @@
-package net.yeputons.spbau.fall2017.scala.torrentclient.peer
+package net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol
 
 import akka.stream._
 import akka.stream.scaladsl.{Flow, Keep, Sink}

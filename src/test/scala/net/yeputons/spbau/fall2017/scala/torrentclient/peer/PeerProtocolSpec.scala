@@ -6,8 +6,8 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
 import akka.util.ByteString
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerMessage.PieceId
-
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.PeerMessage.PieceId
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol._
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.immutable
@@ -50,10 +50,10 @@ class PeerProtocolSpec
 
   "PeerFraming atop Handshake" must {
     "work when looped" in {
-      val loop = PeerFraming()
-        .atop(PeerHandshake(infoHash, myPeerId, Some(otherPeerId)))
-        .atop(PeerHandshake(infoHash, otherPeerId, Some(myPeerId)).reversed)
-        .atop(PeerFraming().reversed)
+      val loop = Framing()
+        .atop(Handshake(infoHash, myPeerId, Some(otherPeerId)))
+        .atop(Handshake(infoHash, otherPeerId, Some(myPeerId)).reversed)
+        .atop(Framing().reversed)
         .join(Flow.fromFunction(identity))
       val (pub, sub) =
         TestSource
@@ -77,10 +77,10 @@ class PeerProtocolSpec
     }
 
     "fail when looped and peer id is incorrect" in {
-      val loop = PeerFraming()
-        .atop(PeerHandshake(infoHash, myPeerId, Some(myPeerId)))
-        .atop(PeerHandshake(infoHash, otherPeerId, Some(myPeerId)).reversed)
-        .atop(PeerFraming().reversed)
+      val loop = Framing()
+        .atop(Handshake(infoHash, myPeerId, Some(myPeerId)))
+        .atop(Handshake(infoHash, otherPeerId, Some(myPeerId)).reversed)
+        .atop(Framing().reversed)
         .join(Flow.fromFunction(identity))
       val (pub, sub) =
         TestSource
@@ -93,10 +93,10 @@ class PeerProtocolSpec
     }
 
     "work when looped and wrong peer id is ignored from one side" in {
-      val loop = PeerFraming()
-        .atop(PeerHandshake(infoHash, myPeerId, None))
-        .atop(PeerHandshake(infoHash, otherPeerId, Some(myPeerId)).reversed)
-        .atop(PeerFraming().reversed)
+      val loop = Framing()
+        .atop(Handshake(infoHash, myPeerId, None))
+        .atop(Handshake(infoHash, otherPeerId, Some(myPeerId)).reversed)
+        .atop(Framing().reversed)
         .join(Flow.fromFunction(identity))
       val (pub, sub) =
         TestSource
@@ -138,8 +138,8 @@ class PeerProtocolSpec
 
       val flow
         : Flow[ByteString, ByteString, Future[immutable.Seq[ByteString]]] =
-        PeerFraming()
-          .atop(PeerHandshake(infoHash, myPeerId, Some(otherPeerId)))
+        Framing()
+          .atop(Handshake(infoHash, myPeerId, Some(otherPeerId)))
           .joinMat(
             Flow.fromSinkAndSourceMat(Sink.seq[ByteString], remoteSource)(
               Keep.left))(Keep.right)
@@ -207,10 +207,10 @@ class PeerProtocolSpec
     for ((key, (message, encoded)) <- examples) {
       f"working with $key" must {
         "encode" in {
-          PeerMessagesParsing.decodeMessage(encoded) shouldBe message
+          MessagesParsing.decodeMessage(encoded) shouldBe message
         }
         "decode" in {
-          PeerMessagesParsing.encodeMessage(message) shouldBe encoded
+          MessagesParsing.encodeMessage(message) shouldBe encoded
         }
       }
     }
