@@ -1,27 +1,13 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient.peer
 
-import akka.actor.{
-  Actor,
-  ActorLogging,
-  ActorRef,
-  ActorSystem,
-  Props,
-  Terminated
-}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import akka.stream.{ActorMaterializer, OverflowStrategy, StreamTcpException}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, Tcp}
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.{
-  OnReceived,
-  ReceivedPeerMessage,
-  SendPeerMessage
-}
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.{OnReceived, ReceivedPeerMessage, SendPeerMessage}
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.Handshake.HandshakeCompleted
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.{
-  PeerMessage,
-  PeerProtocol
-}
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.{Handshake, PeerMessage, PeerProtocol}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -31,16 +17,19 @@ import scala.util.{Failure, Success}
   * fails or completes, logs events in the meantime. Passes all [[PeerMessage]]
   * from the stream to `handler`, wrapped in [[ReceivedPeerMessage]]. Passes
   * all [[SendPeerMessage]] to the stream.
+  *
+  * Has the only abstract `def connectionFlow` which allows mocking connection flow in tests.
+  * See [[net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.PeerTcpConnection]]
+  * for the default implementation which works with TCP.
+  *
   * @param handler The actor which will receive [[PeerMessage]] from the stream
-  * @param connectionFactory Factory which constructs a connection [[Flow]]
   */
-class PeerConnection(
-    handler: ActorRef,
-    connectionFactory: ActorSystem => Flow[PeerMessage,
-                                           PeerMessage,
-                                           Future[HandshakeCompleted.type]])
+abstract class PeerConnection(handler: ActorRef)
     extends Actor
     with ActorLogging {
+
+  def connectionFlow
+    : Flow[PeerMessage, PeerMessage, Future[HandshakeCompleted.type]]
 
   import context.dispatcher
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -48,7 +37,7 @@ class PeerConnection(
   val (connection: ActorRef, handshakeCompletedFuture) =
     Source
       .actorRef(100, OverflowStrategy.fail)
-      .viaMat(connectionFactory(context.system))(Keep.both)
+      .viaMat(connectionFlow)(Keep.both)
       .map(OnReceived)
       .to(Sink.actorRef(self, PeerConnection.OnCompleteMessage))
       .run()
@@ -112,15 +101,25 @@ object PeerConnection {
             infoHash: ByteString,
             myPeerId: ByteString,
             otherPeer: PeerInformation) =
-    Props(
-      new PeerConnection(
-        handler,
-        actorSystem =>
-          PeerProtocol(infoHash,
-                       myPeerId,
-                       otherPeer.id.map(x => ByteString(x.toArray)))
-            .join(Tcp(actorSystem).outgoingConnection(otherPeer.address))
-      ))
+    Props(new PeerTcpConnection(handler, infoHash, myPeerId, otherPeer))
+
+  /**
+    * Default implementation of [[PeerConnection]] which
+    * uses TCP for communication with a peer.
+    */
+  private class PeerTcpConnection(handler: ActorRef,
+                                  infoHash: ByteString,
+                                  myPeerId: ByteString,
+                                  otherPeer: PeerInformation)
+    extends PeerConnection(handler) {
+    override def connectionFlow: Flow[PeerMessage,
+      PeerMessage,
+      Future[Handshake.HandshakeCompleted.type]] =
+      PeerProtocol(infoHash,
+        myPeerId,
+        otherPeer.id.map(x => ByteString(x.toArray)))
+        .join(Tcp(context.system).outgoingConnection(otherPeer.address))
+  }
 
   private case class OnReceived(msg: PeerMessage)
   private case object OnCompleteMessage
