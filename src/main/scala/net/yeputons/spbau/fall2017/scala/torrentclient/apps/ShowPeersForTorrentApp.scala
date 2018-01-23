@@ -8,25 +8,18 @@ import akka.pattern.ask
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker
-import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
-  GetPeers,
-  PeerInformation,
-  PeersListResponse
-}
+import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{GetPeers, PeerInformation, PeersListResponse}
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler.{
-  AddPeer,
-  PieceStatisticsRequest,
-  PieceStatisticsResponse
-}
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler._
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.{Duration, _}
 
 object ShowPeersForTorrentApp {
   val log = LoggerFactory.getLogger(getClass)
+  implicit val executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
 
   def main(args: Array[String]): Unit = {
     if (args.length != 1) {
@@ -117,6 +110,9 @@ object ShowPeersForTorrentApp {
             s"${piecesOfPeer.values.min} and ${piecesOfPeer.values.max} pieces, " +
             s"average is ${piecesOfPeer.values.sum / piecesOfPeer.values.size}"
         )
+      }
+      (swarm ? PeerForPieceRequest(0)).map { case PeerForPieceResponse(0, peer) =>
+          log.info(s"Current peer for piece 0 is $peer")
       }
     }
 
