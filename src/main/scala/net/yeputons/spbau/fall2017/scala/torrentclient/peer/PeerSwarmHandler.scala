@@ -10,11 +10,13 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler._
 
 import scala.collection.mutable
 
-abstract class PeerSwarmHandler extends Actor with ActorLogging {
+abstract class PeerSwarmHandler(piecesCount: Int)
+    extends Actor
+    with ActorLogging {
   val actorByPeer = mutable.Map.empty[PeerInformation, ActorRef]
   val peerByActor = mutable.Map.empty[ActorRef, PeerInformation]
 
-  val actorsWithPiece = mutable.Map.empty[Int, mutable.Set[ActorRef]]
+  val actorsWithPiece = Seq.fill(piecesCount)(mutable.Set.empty[ActorRef])
   val piecesOfActor = mutable.Map.empty[ActorRef, mutable.Set[Int]]
 
   def createPeerActor(peer: PeerInformation): ActorRef
@@ -38,8 +40,7 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
     case AddPieces(pieces) =>
       val actor = sender()
       if (peerByActor.contains(actor)) {
-        pieces.foreach(piece =>
-          actorsWithPiece.getOrElseUpdate(piece, mutable.Set.empty) += actor)
+        pieces.foreach(piece => actorsWithPiece(piece) += actor)
         piecesOfActor(actor) ++= pieces
       } else {
         log.debug(s"Unexpected AddPieces message from $actor")
@@ -47,23 +48,23 @@ abstract class PeerSwarmHandler extends Actor with ActorLogging {
     case RemovePieces(pieces) =>
       val actor = sender()
       if (peerByActor.contains(actor)) {
-        pieces.foreach(piece => actorsWithPiece.get(piece).foreach(_ -= actor))
+        pieces.foreach(piece => actorsWithPiece(piece) -= actor)
         piecesOfActor(actor) --= pieces
       } else {
         log.debug(s"Unexpected RemovePieces message from $actor")
       }
     case Terminated(actor) =>
       val peer = peerByActor(actor)
-      log.debug(s"Actor for $peer terminated, ${actorByPeer.size - 1} peers left")
+      log.debug(
+        s"Actor for $peer terminated, ${actorByPeer.size - 1} peers left")
       actorByPeer -= peer
       peerByActor -= actor
-      piecesOfActor(actor).foreach(piece =>
-        actorsWithPiece.get(piece).foreach(_ -= actor))
+      piecesOfActor(actor).foreach(piece => actorsWithPiece(piece) -= actor)
       piecesOfActor -= actor
 
     case PieceStatisticsRequest =>
       sender() ! PieceStatisticsResponse(
-        actorsWithPiece.mapValues(_.size).toMap,
+        actorsWithPiece.map(_.size),
         piecesOfActor.map {
           case (actor, pieces) => (peerByActor(actor), pieces.size)
         }.toMap
@@ -82,14 +83,18 @@ object PeerSwarmHandler {
   case class RemovePieces(pieces: Set[Int])
   case object PieceStatisticsRequest
 
-  case class PieceStatisticsResponse(peersWithPiece: Map[Int, Int],
+  case class PieceStatisticsResponse(peersWithPiece: Seq[Int],
                                      piecesOfPeer: Map[PeerInformation, Int])
 
-  def props(infoHash: ByteString, myPeerId: ByteString): Props =
-    Props(new PeerSwarmHandlerImpl(infoHash, myPeerId))
+  def props(infoHash: ByteString,
+            myPeerId: ByteString,
+            piecesCount: Int): Props =
+    Props(new PeerSwarmHandlerImpl(infoHash, myPeerId, piecesCount))
 
-  private class PeerSwarmHandlerImpl(infoHash: ByteString, myPeerId: ByteString)
-      extends PeerSwarmHandler {
+  private class PeerSwarmHandlerImpl(infoHash: ByteString,
+                                     myPeerId: ByteString,
+                                     piecesCount: Int)
+      extends PeerSwarmHandler(piecesCount) {
     override def createPeerActor(peer: PeerInformation): ActorRef = {
       val name = URLEncoder.encode(peer.address.getHostString, "ASCII") + "_" + peer.address.getPort
       context.actorOf(PeerHandler.props(self, infoHash, myPeerId, peer), name)
