@@ -15,7 +15,7 @@ import scala.collection.mutable
   * See [[net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler.PeerTcpHandler]]
   * for the default implementation which uses [[PeerConnection]].
   */
-abstract class PeerHandler() extends Actor with ActorLogging {
+abstract class PeerHandler extends Actor with ActorLogging {
 
   def createConnection(): ActorRef
 
