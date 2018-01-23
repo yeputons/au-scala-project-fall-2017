@@ -7,6 +7,7 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.{
   SendPeerMessage
 }
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandlerSpec.PeerHandlerWithMock
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler.AddPieces
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.PeerMessage._
 import org.scalatest.WordSpecLike
 
@@ -23,7 +24,8 @@ class PeerHandlerSpec
       val connection = TestProbe()
       val connectionCreated = Promise[Unit]
       val handler = system.actorOf(
-        PeerHandlerWithMock.props(connection.ref, connectionCreated))
+        PeerHandlerWithMock
+          .props(connection.ref, connectionCreated, TestProbe().ref))
       watcher.watch(handler)
 
       Await.result(connectionCreated.future, 100.milliseconds)
@@ -35,6 +37,22 @@ class PeerHandlerSpec
       watcher.expectTerminated(handler)
     }
 
+    "pass data about pieces to swarm handler" in {
+      val connection = TestProbe()
+      val connectionCreated = Promise[Unit]
+      val swarmHandler = TestProbe()
+      val handler = system.actorOf(
+        PeerHandlerWithMock
+          .props(connection.ref, connectionCreated, swarmHandler.ref))
+      Await.result(connectionCreated.future, 100.milliseconds)
+
+      connection.send(handler, ReceivedPeerMessage(HasPieces(Set(10, 20, 30))))
+      swarmHandler.expectMsg(AddPieces(Set(10, 20, 30)))
+
+      connection.send(handler, ReceivedPeerMessage(HasNewPiece(15)))
+      swarmHandler.expectMsg(AddPieces(Set(15)))
+    }
+
     "send keep alive every so often" in {
       val connection = TestProbe()
       val connectionCreated = Promise[Unit]
@@ -42,6 +60,7 @@ class PeerHandlerSpec
         PeerHandlerWithMock
           .props(connection.ref,
                  connectionCreated,
+                 TestProbe().ref,
                  keepAlivePeriod = 500.milliseconds))
       Await.result(connectionCreated.future, 100.milliseconds)
 
@@ -59,7 +78,8 @@ class PeerHandlerSpec
       val handler = system.actorOf(
         PeerHandlerWithMock
           .props(connection.ref,
-            connectionCreated,
+                 connectionCreated,
+                 TestProbe().ref,
                  keepAlivePeriod = 1.minute,
                  keepAliveTimeout = 500.milliseconds))
       watcher.watch(handler)
@@ -86,6 +106,7 @@ class PeerHandlerSpec
         PeerHandlerWithMock
           .props(TestProbe().ref,
                  Promise[Unit],
+                 TestProbe().ref,
                  keepAlivePeriod = 1.minute,
                  keepAliveTimeout = 500.milliseconds))
       watcher.watch(handler)
@@ -97,9 +118,10 @@ class PeerHandlerSpec
 object PeerHandlerSpec {
   private class PeerHandlerWithMock(connection: ActorRef,
                                     connectionCreated: Promise[Unit],
+                                    swarmHandler: ActorRef,
                                     _keepAlivePeriod: FiniteDuration,
                                     _keepAliveTimeout: FiniteDuration)
-      extends PeerHandler {
+      extends PeerHandler(swarmHandler) {
     override def createConnection(): ActorRef = {
       connectionCreated.complete(Success(()))
       connection
@@ -113,11 +135,13 @@ object PeerHandlerSpec {
   object PeerHandlerWithMock {
     def props(connection: ActorRef,
               connectionCreated: Promise[Unit],
+              swarmHandler: ActorRef,
               keepAlivePeriod: FiniteDuration = 2.minutes,
               keepAliveTimeout: FiniteDuration = 3.minutes) =
       Props(
         new PeerHandlerWithMock(connection,
                                 connectionCreated,
+                                swarmHandler,
                                 keepAlivePeriod,
                                 keepAliveTimeout))
   }

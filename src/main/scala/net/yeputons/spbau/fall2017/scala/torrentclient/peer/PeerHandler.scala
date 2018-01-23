@@ -8,6 +8,7 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.{
   SendPeerMessage
 }
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler._
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler.AddPieces
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.PeerMessage._
 
 import scala.collection.mutable
@@ -20,7 +21,10 @@ import scala.concurrent.duration._
   * See [[net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler.PeerTcpHandler]]
   * for the default implementation which uses [[PeerConnection]].
   */
-abstract class PeerHandler extends Actor with ActorLogging with Timers {
+abstract class PeerHandler(swarmHandler: ActorRef)
+    extends Actor
+    with ActorLogging
+    with Timers {
 
   def createConnection(): ActorRef
 
@@ -73,10 +77,12 @@ abstract class PeerHandler extends Actor with ActorLogging with Timers {
         case HasPieces(pieces) =>
           otherAvailable.clear()
           otherAvailable ++= pieces
+          swarmHandler ! AddPieces(pieces)
           log.debug(
             s"New information about pieces: ${otherAvailable.size} available")
         case HasNewPiece(piece) =>
           otherAvailable += piece
+          swarmHandler ! AddPieces(Set(piece))
           log.debug(
             s"Piece $piece is now available; ${otherAvailable.size} in total")
 
@@ -101,16 +107,20 @@ object PeerHandler {
     * Creates [[Props]] for the [[PeerHandler]] actor for establishing TCP
     * connection with a BitTorrent peer. Parameters are directly passed
     * to [[PeerConnection.props]].
+    *
+    * @param swarmHandler [[ActorRef]] to a [[PeerSwarmHandler]] actor
     */
-  def props(infoHash: ByteString,
+  def props(swarmHandler: ActorRef,
+            infoHash: ByteString,
             myPeerId: ByteString,
             otherPeer: PeerInformation) =
-    Props(new PeerTcpHandler(infoHash, myPeerId, otherPeer))
+    Props(new PeerTcpHandler(swarmHandler, infoHash, myPeerId, otherPeer))
 
-  class PeerTcpHandler(infoHash: ByteString,
+  class PeerTcpHandler(swarmHandler: ActorRef,
+                       infoHash: ByteString,
                        myPeerId: ByteString,
                        otherPeer: PeerInformation)
-      extends PeerHandler {
+      extends PeerHandler(swarmHandler) {
     override def createConnection(): ActorRef =
       context.actorOf(PeerConnection.props(self, infoHash, myPeerId, otherPeer),
                       "conn")

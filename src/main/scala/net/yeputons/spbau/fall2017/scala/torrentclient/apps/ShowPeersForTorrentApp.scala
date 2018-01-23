@@ -3,7 +3,7 @@ package net.yeputons.spbau.fall2017.scala.torrentclient.apps
 import java.nio.file.{Files, Path, Paths}
 import java.security.MessageDigest
 
-import akka.actor.{ActorSystem, PoisonPill}
+import akka.actor.{ActorRef, ActorSystem, PoisonPill}
 import akka.pattern.ask
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
@@ -79,7 +79,8 @@ object ShowPeersForTorrentApp {
     peers.foreach { peer =>
       System.out.println(f"Connecting to $peer...")
       val peerActor = actorSystem.actorOf(
-        PeerHandler.props(ByteString(infoHash),
+        PeerHandler.props(ActorRef.noSender,
+                          ByteString(infoHash),
                           ByteString("01234567890123456789"),
                           peer),
         java.net.URLEncoder.encode(peer.address.getHostString, "ASCII") +
