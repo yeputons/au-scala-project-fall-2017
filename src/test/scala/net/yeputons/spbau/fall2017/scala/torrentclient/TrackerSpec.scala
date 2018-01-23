@@ -51,8 +51,8 @@ class TrackerSpec
   "The Tracker actor" must {
     "answer with no peers in the beginning" in {
       val tracker = createTracker(Uri./, TestProbe().ref)
-      tracker ! GetPeers(123)
-      expectMsg(1.second, PeersListResponse(123, Set.empty))
+      tracker ! GetPeers
+      expectMsg(1.second, PeersListResponse(Set.empty))
       tracker ! PoisonPill
     }
 
@@ -110,10 +110,9 @@ class TrackerSpec
             )
           )
         )))
-      tracker ! GetPeers(514)
+      tracker ! GetPeers
       val msg = expectMsgClass(1.second, classOf[PeersListResponse])
       msg shouldBe PeersListResponse(
-        514,
         Set(
           PeerInformation(InetSocketAddress.createUnresolved("1.example.com",
                                                              4567),
@@ -143,10 +142,9 @@ class TrackerSpec
                 Seq(127, 1, 2, 5, 0x1F, 0x90)).map(_.toByte)
             )
           )))
-      tracker ! GetPeers(514)
+      tracker ! GetPeers
       val msg = expectMsgClass(1.second, classOf[PeersListResponse])
       msg shouldBe PeersListResponse(
-        514,
         Set(
           PeerInformation(new InetSocketAddress("127.1.2.3", 8080), None),
           PeerInformation(new InetSocketAddress("127.1.2.3", 8081), None),

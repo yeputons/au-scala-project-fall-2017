@@ -50,8 +50,8 @@ object ShowPeersForTorrentApp {
     while (peers.isEmpty) {
       Thread.sleep(1000)
       val id = random.nextLong()
-      Await.result(tracker ? GetPeers(id), Duration.Inf) match {
-        case PeersListResponse(`id`, newPeers) =>
+      Await.result(tracker ? GetPeers, Duration.Inf) match {
+        case PeersListResponse(newPeers) =>
           peers = newPeers
       }
     }

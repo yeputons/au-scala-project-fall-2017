@@ -50,8 +50,8 @@ class Tracker(baseAnnounceUri: Uri,
   }
 
   override def receive: Receive = {
-    case GetPeers(requestId) =>
-      sender() ! PeersListResponse(requestId, peers)
+    case GetPeers =>
+      sender() ! PeersListResponse(peers)
     case UpdatePeersList =>
       updatePeersList()
     case HttpRequestSucceeded(_, httpResponse, data) =>
@@ -161,9 +161,8 @@ object Tracker {
 
   /**
     * Request for the [[Tracker]] actor to send a current list of peers
-    * @param requestId An arbitrary number to tell requests sent at different moments apart
     */
-  case class GetPeers(requestId: Long)
+  case object GetPeers
 
   /**
     * Request for the [[Tracker]] actor to update list of peers from the tracker.
@@ -172,10 +171,9 @@ object Tracker {
 
   /**
     * Response for the [[GetPeers]] message.
-    * @param requestId The same `requestId` as provided in the initial [[GetPeers]] message
     * @param peers Current list of peers
     */
-  case class PeersListResponse(requestId: Long, peers: Set[PeerInformation])
+  case class PeersListResponse(peers: Set[PeerInformation])
 
   /**
     * Creates [[Props]] for the [[Tracker]] actor.
