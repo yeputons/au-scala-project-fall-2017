@@ -9,6 +9,7 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler._
 
 import scala.collection.mutable
+import scala.util.Random
 
 abstract class PeerSwarmHandler(piecesCount: Int)
     extends Actor
@@ -69,6 +70,17 @@ abstract class PeerSwarmHandler(piecesCount: Int)
           case (actor, pieces) => (peerByActor(actor), pieces.size)
         }.toMap
       )
+
+    case PeerForPieceRequest(pieceId) =>
+      val actors = actorsWithPiece(pieceId)
+      if (actors.isEmpty) {
+        log.debug(
+          s"Ignoring request for piece $pieceId as there are no such peers")
+      } else {
+        // TODO: choose unchoked peers first
+        val peer = actors.toSeq(Random.nextInt(actors.size))
+        sender() ! PeerForPieceResponse(pieceId, peer)
+      }
   }
 
   override def unhandled(message: Any): Unit = {
@@ -82,9 +94,11 @@ object PeerSwarmHandler {
   case class AddPieces(pieces: Set[Int])
   case class RemovePieces(pieces: Set[Int])
   case object PieceStatisticsRequest
+  case class PeerForPieceRequest(pieceId: Int)
 
   case class PieceStatisticsResponse(peersWithPiece: Seq[Int],
                                      piecesOfPeer: Map[PeerInformation, Int])
+  case class PeerForPieceResponse(pieceId: Int, peer: ActorRef)
 
   def props(infoHash: ByteString,
             myPeerId: ByteString,
