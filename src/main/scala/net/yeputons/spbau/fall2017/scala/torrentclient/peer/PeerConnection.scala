@@ -17,7 +17,11 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.{
   ReceivedPeerMessage,
   SendPeerMessage
 }
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandshake.HandshakeCompleted
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.Handshake.HandshakeCompleted
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.{
+  PeerMessage,
+  PeerProtocol
+}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}

@@ -1,17 +1,10 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient.peer
 
-import akka.actor.{
-  Actor,
-  ActorLogging,
-  ActorRef,
-  ActorRefFactory,
-  Props,
-  Terminated
-}
+import akka.actor._
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.ReceivedPeerMessage
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerMessage._
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.PeerMessage._
 
 import scala.collection.mutable
 
