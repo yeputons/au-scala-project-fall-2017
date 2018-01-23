@@ -3,10 +3,15 @@ package net.yeputons.spbau.fall2017.scala.torrentclient.peer
 import akka.actor._
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.ReceivedPeerMessage
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerConnection.{
+  ReceivedPeerMessage,
+  SendPeerMessage
+}
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler._
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.PeerMessage._
 
 import scala.collection.mutable
+import scala.concurrent.duration._
 
 /**
   * Tracks a state of a BitTorrent peer. Stops whenever connection stops.
@@ -15,9 +20,13 @@ import scala.collection.mutable
   * See [[net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler.PeerTcpHandler]]
   * for the default implementation which uses [[PeerConnection]].
   */
-abstract class PeerHandler extends Actor with ActorLogging {
+abstract class PeerHandler extends Actor with ActorLogging with Timers {
 
   def createConnection(): ActorRef
+
+  def keepAlivePeriod: FiniteDuration = 2.minutes
+
+  def keepAliveTimeout: FiniteDuration = 3.minutes
 
   val connection: ActorRef = createConnection()
   context.watch(connection)
@@ -26,14 +35,25 @@ abstract class PeerHandler extends Actor with ActorLogging {
   var otherInterested = false
   val otherAvailable = mutable.Set.empty[Int]
 
-  override def preStart(): Unit = log.debug("PeerHandler started")
+  override def preStart(): Unit = {
+    log.debug("PeerHandler started")
+    timers.startPeriodicTimer(KeepAliveTimer, SendKeepAlive, keepAlivePeriod)
+    timers.startSingleTimer(NoMessagesTimer, NoMessages, keepAliveTimeout)
+  }
 
   override def postStop(): Unit = log.debug("PeerHandler stopped")
 
   override def receive: Receive = {
     case Terminated(`connection`) =>
       context.stop(self)
+    case SendKeepAlive =>
+      log.debug("Sending KeepAlive")
+      connection ! SendPeerMessage(KeepAlive)
+    case NoMessages =>
+      log.debug("No messages received for a long time, stopping")
+      context.stop(self)
     case ReceivedPeerMessage(msg) =>
+      timers.startSingleTimer(NoMessagesTimer, NoMessages, keepAliveTimeout)
       msg match {
         case KeepAlive =>
           log.info("Received KeepAlive")
@@ -95,4 +115,16 @@ object PeerHandler {
       context.actorOf(PeerConnection.props(self, infoHash, myPeerId, otherPeer),
                       "conn")
   }
+
+  /**
+    * Timer which asks the actor to send `KeepAlive` every so often
+    */
+  private case object KeepAliveTimer
+  private case object SendKeepAlive
+
+  /**
+    * Timer which drops the connection after a while with no messages
+    */
+  private case object NoMessagesTimer
+  private case object NoMessages
 }
