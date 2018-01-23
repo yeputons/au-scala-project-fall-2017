@@ -37,11 +37,13 @@ class PeerHandlerSpec
 
     "send keep alive every so often" in {
       val connection = TestProbe()
+      val connectionCreated = Promise[Unit]
       val handler = system.actorOf(
         PeerHandlerWithMock
           .props(connection.ref,
-                 Promise[Unit],
+                 connectionCreated,
                  keepAlivePeriod = 500.milliseconds))
+      Await.result(connectionCreated.future, 100.milliseconds)
 
       connection.expectNoMessage(250.milliseconds)
       connection.expectMsg(500.milliseconds, SendPeerMessage(KeepAlive))
@@ -53,13 +55,15 @@ class PeerHandlerSpec
     "drop connection after no messages for a while" in {
       val watcher = TestProbe()
       val connection = TestProbe()
+      val connectionCreated = Promise[Unit]
       val handler = system.actorOf(
         PeerHandlerWithMock
           .props(connection.ref,
-                 Promise[Unit],
+            connectionCreated,
                  keepAlivePeriod = 1.minute,
                  keepAliveTimeout = 500.milliseconds))
       watcher.watch(handler)
+      Await.result(connectionCreated.future, 100.milliseconds)
 
       connection.send(handler, ReceivedPeerMessage(Interested))
       watcher.expectNoMessage(250.milliseconds)
