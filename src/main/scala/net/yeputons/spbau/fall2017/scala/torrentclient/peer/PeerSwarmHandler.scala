@@ -3,15 +3,7 @@ package net.yeputons.spbau.fall2017.scala.torrentclient.peer
 import java.net.URLEncoder
 
 import akka.actor.SupervisorStrategy.Stop
-import akka.actor.{
-  Actor,
-  ActorLogging,
-  ActorRef,
-  OneForOneStrategy,
-  Props,
-  SupervisorStrategy,
-  Terminated
-}
+import akka.actor._
 import akka.util.ByteString
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.PeerInformation
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler._

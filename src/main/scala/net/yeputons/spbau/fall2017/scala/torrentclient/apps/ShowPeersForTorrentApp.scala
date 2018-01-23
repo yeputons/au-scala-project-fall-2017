@@ -1,9 +1,9 @@
 package net.yeputons.spbau.fall2017.scala.torrentclient.apps
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Paths}
 import java.security.MessageDigest
 
-import akka.actor.{ActorRef, ActorSystem, PoisonPill}
+import akka.actor.{ActorSystem, PoisonPill}
 import akka.pattern.ask
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
