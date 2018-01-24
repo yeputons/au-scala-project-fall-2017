@@ -103,7 +103,7 @@ object MessagesParsing {
       extends AnyVal {
     def putBlockId(block: BlockId): ByteStringBuilder =
       builder
-        .putInt(block.index)
+        .putInt(block.pieceId)
         .putInt(block.begin)
         .putInt(block.length)
   }

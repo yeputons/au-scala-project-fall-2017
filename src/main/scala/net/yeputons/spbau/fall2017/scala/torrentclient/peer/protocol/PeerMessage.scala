@@ -21,5 +21,5 @@ object PeerMessage {
       extends PeerMessage
   case class BlockRequestCancel(block: BlockId) extends PeerMessage
 
-  case class BlockId(index: Int, begin: Int, length: Int)
+  case class BlockId(pieceId: Int, begin: Int, length: Int)
 }
