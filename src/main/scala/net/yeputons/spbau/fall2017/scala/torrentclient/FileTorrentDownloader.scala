@@ -113,7 +113,7 @@ class FileTorrentDownloader(torrent: Torrent, storageFile: File)
       pieceByActor(actor) = id
     }
     if (remainingPieces.isEmpty && pieceByActor.isEmpty) {
-      log.debug("Download completed, nothing to span")
+      log.debug("Download completed, nothing to spawn")
     }
   }
 
