@@ -2,6 +2,7 @@ package net.yeputons.spbau.fall2017.scala.torrentclient
 
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.{ByteBuffer, ByteOrder}
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props, Terminated, Timers}
 import akka.http.scaladsl.model._
@@ -102,6 +103,14 @@ class Tracker(baseAnnounceUri: Uri,
 
   def processTrackerResponse(data: BEntry): Unit = {
     log.debug(s"processTrackerResponse($data)")
+    data.getDict("interval") match {
+      case BNumber(interval) =>
+        log.debug(s"Will update after $interval seconds")
+        timers.startSingleTimer(UpdateTimer, UpdatePeersList, FiniteDuration(interval, SECONDS))
+      case _ =>
+        log.debug("Unable to find 'interval' field in tracker's reponse, will update after 1 minute")
+        timers.startSingleTimer(UpdateTimer, UpdatePeersList, 1.minute)
+    }
     // TODO: update peers automatically after 'interval'
     data.asInstanceOf[BDict]("peers") match {
       case peersList: BList =>
