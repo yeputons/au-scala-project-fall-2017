@@ -126,7 +126,7 @@ class FileTorrentDownloader(torrent: Torrent, storageFile: File)
     } finally {
       f.close()
     }
-    log.debug(s"Saved piece $pieceId to $storageFile")
+    log.debug(s"Saved piece $pieceId to $storageFile, ${pieceByActor.size} are downloading, ${remainingPieces.size} are in queue")
     if (remainingPieces.isEmpty && pieceByActor.isEmpty) {
       log.info("Download completed")
     }
