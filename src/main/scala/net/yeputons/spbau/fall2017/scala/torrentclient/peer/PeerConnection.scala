@@ -57,16 +57,16 @@ abstract class PeerConnection(handler: ActorRef)
     case akka.actor.Status.Failure(e) =>
       e match {
         case e: StreamTcpException =>
-          log.warning(s"TCP error, aborting: $e")
+          log.info(s"TCP error, aborting: $e")
         case _ =>
-          log.warning(f"Peer protocol error occurred, aborting connection: $e")
+          log.info(f"Peer protocol error occurred, aborting connection: $e")
       }
       context.stop(self)
     case PeerConnection.OnCompleteMessage =>
       log.info("Stream terminated, stopping")
       context.stop(self)
     case Terminated(`connection`) =>
-      log.warning("Connection actor stopped, stopping")
+      log.info("Connection actor stopped, stopping")
       context.stop(self)
   }
 

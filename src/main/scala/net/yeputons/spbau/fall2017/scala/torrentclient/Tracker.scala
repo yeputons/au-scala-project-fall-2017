@@ -2,24 +2,15 @@ package net.yeputons.spbau.fall2017.scala.torrentclient
 
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.{ByteBuffer, ByteOrder}
+import java.util.concurrent.TimeUnit
 
-import akka.actor.{
-  Actor,
-  ActorLogging,
-  ActorRef,
-  ActorRefFactory,
-  Props,
-  Timers
-}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props, Terminated, Timers}
 import akka.http.scaladsl.model._
-import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{
-  HttpRequestFailed,
-  HttpRequestSucceeded,
-  MakeHttpRequest
-}
+import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{HttpRequestFailed, HttpRequestSucceeded, MakeHttpRequest}
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker._
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 
+import scala.collection.mutable
 import scala.concurrent.duration.{FiniteDuration, _}
 
 /**
@@ -43,6 +34,7 @@ class Tracker(baseAnnounceUri: Uri,
     with Timers {
   val httpRequestActor: ActorRef = httpRequestsActorFactory(context)
   var peers: Set[PeerInformation] = Set.empty
+  val subscribed = mutable.Set.empty[ActorRef]
 
   override def preStart(): Unit = {
     super.preStart()
@@ -50,8 +42,15 @@ class Tracker(baseAnnounceUri: Uri,
   }
 
   override def receive: Receive = {
-    case GetPeers(requestId) =>
-      sender() ! PeersListResponse(requestId, peers)
+    case GetPeers =>
+      sender() ! PeersListResponse(peers)
+    case SubscribeToPeersList =>
+      subscribed += sender()
+      context.watch(sender())
+    case UnsubscribeFromPeersList =>
+      subscribed -= sender()
+    case Terminated(actor) =>
+      subscribed -= actor
     case UpdatePeersList =>
       updatePeersList()
     case HttpRequestSucceeded(_, httpResponse, data) =>
@@ -104,6 +103,14 @@ class Tracker(baseAnnounceUri: Uri,
 
   def processTrackerResponse(data: BEntry): Unit = {
     log.debug(s"processTrackerResponse($data)")
+    data.getDict("interval") match {
+      case BNumber(interval) =>
+        log.debug(s"Will update after $interval seconds")
+        timers.startSingleTimer(UpdateTimer, UpdatePeersList, FiniteDuration(interval, SECONDS))
+      case _ =>
+        log.debug("Unable to find 'interval' field in tracker's reponse, will update after 1 minute")
+        timers.startSingleTimer(UpdateTimer, UpdatePeersList, 1.minute)
+    }
     // TODO: update peers automatically after 'interval'
     data.asInstanceOf[BDict]("peers") match {
       case peersList: BList =>
@@ -120,6 +127,7 @@ class Tracker(baseAnnounceUri: Uri,
               s"Unexpected item in the 'peers' field from tracker: $x")
             None
         }.toSet
+        subscribed.foreach(_ ! PeersListResponse(peers))
       case peersList: BByteString =>
         // BEP 23 "Tracker Returns Compact Peer Lists"
         if (peersList.value.length % 6 != 0) {
@@ -139,6 +147,7 @@ class Tracker(baseAnnounceUri: Uri,
             PeerInformation(new InetSocketAddress(ip, port), None)
           }
           .toSet
+        subscribed.foreach(_ ! PeersListResponse(peers))
       case x =>
         log.warning(s"Unexpected type of the 'peers' field from tracker: $x")
     }
@@ -161,9 +170,8 @@ object Tracker {
 
   /**
     * Request for the [[Tracker]] actor to send a current list of peers
-    * @param requestId An arbitrary number to tell requests sent at different moments apart
     */
-  case class GetPeers(requestId: Long)
+  case object GetPeers
 
   /**
     * Request for the [[Tracker]] actor to update list of peers from the tracker.
@@ -171,11 +179,20 @@ object Tracker {
   case object UpdatePeersList
 
   /**
+    * Request that tracker sends [[PeersListResponse]] on all future tracker updates to the sender.
+    */
+  case object SubscribeToPeersList
+
+  /**
+    * Request that tracker don't send [[PeersListResponse]] to the sender automatically anymore.
+    */
+  case object UnsubscribeFromPeersList
+
+  /**
     * Response for the [[GetPeers]] message.
-    * @param requestId The same `requestId` as provided in the initial [[GetPeers]] message
     * @param peers Current list of peers
     */
-  case class PeersListResponse(requestId: Long, peers: Set[PeerInformation])
+  case class PeersListResponse(peers: Set[PeerInformation])
 
   /**
     * Creates [[Props]] for the [[Tracker]] actor.

@@ -6,15 +6,8 @@ import akka.actor.{ActorRef, ActorSystem, PoisonPill, Props}
 import akka.http.scaladsl.model._
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import akka.util.ByteString
-import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{
-  HttpRequestSucceeded,
-  MakeHttpRequest
-}
-import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
-  GetPeers,
-  PeerInformation,
-  PeersListResponse
-}
+import net.yeputons.spbau.fall2017.scala.torrentclient.HttpRequestActor.{HttpRequestSucceeded, MakeHttpRequest}
+import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{GetPeers, PeerInformation, PeersListResponse, SubscribeToPeersList}
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
@@ -51,8 +44,8 @@ class TrackerSpec
   "The Tracker actor" must {
     "answer with no peers in the beginning" in {
       val tracker = createTracker(Uri./, TestProbe().ref)
-      tracker ! GetPeers(123)
-      expectMsg(1.second, PeersListResponse(123, Set.empty))
+      tracker ! GetPeers
+      expectMsg(1.second, PeersListResponse(Set.empty))
       tracker ! PoisonPill
     }
 
@@ -88,7 +81,10 @@ class TrackerSpec
 
     "parses list of peers in verbose representation" in {
       val httpRequestProbe = TestProbe()
+      val subscribedActor = TestProbe()
+
       val tracker = createTracker("/", httpRequestProbe.ref)
+      subscribedActor.send(tracker, SubscribeToPeersList)
       httpRequestProbe.expectMsgClass(1.second, classOf[MakeHttpRequest])
       httpRequestProbe.reply(
         successfulHttpResponse(BDict.fromAsciiStringKeys(
@@ -110,28 +106,31 @@ class TrackerSpec
             )
           )
         )))
-      tracker ! GetPeers(514)
-      val msg = expectMsgClass(1.second, classOf[PeersListResponse])
-      msg shouldBe PeersListResponse(
-        514,
-        Set(
-          PeerInformation(InetSocketAddress.createUnresolved("1.example.com",
-                                                             4567),
-                          Some("peer-123".getBytes().toSeq)),
-          PeerInformation(InetSocketAddress.createUnresolved("2.example.com",
-                                                             4568),
-                          Some("peer-456".getBytes().toSeq)),
-          PeerInformation(InetSocketAddress.createUnresolved("3.example.com",
-                                                             4569),
-                          None)
-        )
-      )
+
+      val response = PeersListResponse(Set(
+        PeerInformation(InetSocketAddress.createUnresolved("1.example.com",
+                                                           4567),
+                        Some("peer-123".getBytes().toSeq)),
+        PeerInformation(InetSocketAddress.createUnresolved("2.example.com",
+                                                           4568),
+                        Some("peer-456".getBytes().toSeq)),
+        PeerInformation(InetSocketAddress.createUnresolved("3.example.com",
+                                                           4569),
+                        None)
+      ))
+      subscribedActor.expectMsgClass(1.seconds, classOf[PeersListResponse]) shouldBe response
+
+      tracker ! GetPeers
+      expectMsgClass(1.second, classOf[PeersListResponse]) shouldBe response
     }
 
     // BEP 23 "Tracker Returns Compact Peer Lists"
     "parses list of peers in compact representation" in {
       val httpRequestProbe = TestProbe()
+      val subscribedActor = TestProbe()
+
       val tracker = createTracker("/", httpRequestProbe.ref)
+      subscribedActor.send(tracker, SubscribeToPeersList)
       httpRequestProbe.expectMsgClass(1.second, classOf[MakeHttpRequest])
       httpRequestProbe.reply(
         successfulHttpResponse(
@@ -143,16 +142,16 @@ class TrackerSpec
                 Seq(127, 1, 2, 5, 0x1F, 0x90)).map(_.toByte)
             )
           )))
-      tracker ! GetPeers(514)
-      val msg = expectMsgClass(1.second, classOf[PeersListResponse])
-      msg shouldBe PeersListResponse(
-        514,
-        Set(
-          PeerInformation(new InetSocketAddress("127.1.2.3", 8080), None),
-          PeerInformation(new InetSocketAddress("127.1.2.3", 8081), None),
-          PeerInformation(new InetSocketAddress("127.1.2.5", 8080), None)
-        )
-      )
+
+      val response = PeersListResponse(Set(
+        PeerInformation(new InetSocketAddress("127.1.2.3", 8080), None),
+        PeerInformation(new InetSocketAddress("127.1.2.3", 8081), None),
+        PeerInformation(new InetSocketAddress("127.1.2.5", 8080), None)
+      ))
+      subscribedActor.expectMsgClass(1.seconds, classOf[PeersListResponse]) shouldBe response
+      tracker ! GetPeers
+
+      expectMsgClass(1.second, classOf[PeersListResponse]) shouldBe response
     }
   }
 }
