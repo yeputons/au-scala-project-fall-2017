@@ -166,9 +166,11 @@ class PeerProtocolSpec
   }
 
   private val blockId = BlockId(1234, 5678, 9012)
-  private val blockIdSerialized = ByteString(
-    0x00, 0x00, 0x04, 0xD2, 0x00, 0x00, 0x16, 0x2E, 0x00, 0x00, 0x23, 0x34
+  private val blockStartSerialized = ByteString(
+    0x00, 0x00, 0x04, 0xD2, 0x00, 0x00, 0x16, 0x2E
   )
+  private val blockIdSerialized = blockStartSerialized ++
+    ByteString(0x00, 0x00, 0x23, 0x34)
 
   private val examples = Map(
     "KeepAlive" -> (PeerMessage.KeepAlive, ByteString.empty),
@@ -191,11 +193,13 @@ class PeerProtocolSpec
       PeerMessage.BlockRequest(blockId),
       ByteString(6) ++ blockIdSerialized
     ),
-    "BlockAvailable" -> (
-      PeerMessage.BlockAvailable(BlockId(1234, 5678, 9012),
-                                 ByteString(10, 20, 30, 40, 50)),
-      ByteString(7) ++ blockIdSerialized ++ ByteString(10, 20, 30, 40, 50)
-    ),
+    "BlockAvailable" -> {
+      val data = ByteString((1 to 9012).map(_.toByte).toArray)
+      (
+        PeerMessage.BlockAvailable(BlockId(1234, 5678, 9012), data),
+        ByteString(7) ++ blockStartSerialized ++ data
+      )
+    },
     "BlockRequestCancel" -> (
       PeerMessage.BlockRequestCancel(blockId),
       ByteString(8) ++ blockIdSerialized
