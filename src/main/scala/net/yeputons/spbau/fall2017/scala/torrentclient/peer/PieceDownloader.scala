@@ -66,6 +66,7 @@ class PieceDownloader(peerSwarmHandler: ActorRef,
         case (_, _) =>
       }
     case BlockDownloaded(blockId @ BlockId(`pieceId`, begin, length), data) =>
+      // TODO: update tracker statistics
       val id = begin / BlockSize
       if (blockId != blockIds(id)) {
         throw new IllegalArgumentException(
