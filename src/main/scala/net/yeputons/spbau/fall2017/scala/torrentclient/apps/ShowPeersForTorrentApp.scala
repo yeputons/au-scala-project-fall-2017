@@ -3,10 +3,10 @@ package net.yeputons.spbau.fall2017.scala.torrentclient.apps
 import java.nio.file.{Files, Path, Paths}
 import java.security.MessageDigest
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, PoisonPill}
 import akka.pattern.ask
 import akka.http.scaladsl.model.Uri
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker
 import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
   GetPeers,
@@ -14,6 +14,7 @@ import net.yeputons.spbau.fall2017.scala.torrentclient.Tracker.{
   PeersListResponse
 }
 import net.yeputons.spbau.fall2017.scala.torrentclient.bencode._
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, _}
@@ -26,7 +27,9 @@ object ShowPeersForTorrentApp {
           |Expected arguments: <path-to-torrent-file>
           |
           |This test app parses a .torrent file, connects to a tracker,
-          |and prints a list of peers received from it.
+          |and prints a list of peers received from it. Then it connects
+          |to all received peers and prints received information to
+          |DEBUG log.
         """.stripMargin)
       sys.exit(1)
     }
@@ -70,8 +73,19 @@ object ShowPeersForTorrentApp {
           peers = newPeers
       }
     }
-    actorSystem.terminate()
+    tracker ! PoisonPill
 
     System.out.println(s"Got some peers:\n$peers")
+    peers.foreach { peer =>
+      System.out.println(f"Connecting to $peer...")
+      val peerActor = actorSystem.actorOf(
+        PeerHandler.props(ByteString(infoHash),
+                          ByteString("01234567890123456789"),
+                          peer),
+        java.net.URLEncoder.encode(peer.address.getHostString, "ASCII") +
+          "_" + peer.address.getPort
+      )
+    }
+    // Do not terminate the actor system
   }
 }
