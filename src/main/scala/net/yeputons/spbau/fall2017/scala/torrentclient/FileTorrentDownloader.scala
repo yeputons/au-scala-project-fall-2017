@@ -127,6 +127,9 @@ class FileTorrentDownloader(torrent: Torrent, storageFile: File)
       f.close()
     }
     log.debug(s"Saved piece $pieceId to $storageFile")
+    if (remainingPieces.isEmpty && pieceByActor.isEmpty) {
+      log.info("Download completed")
+    }
   }
 }
 
