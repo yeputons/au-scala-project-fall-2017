@@ -93,10 +93,11 @@ class PieceDownloader(peerSwarmHandler: ActorRef,
       context.parent ! PieceDownloaded(pieceId,
                                        blocks.map(_.get).reduce(_ ++ _))
       context.stop(self)
+      return
     }
     log.warning(
       s"Downloaded piece $pieceId of length $pieceLength with an invalid hash: got $realHash instead of $pieceHash, retrying")
-    for (i <- 0 to blocks.size)
+    for (i <- blocks.indices)
       blocks(i) = None
     choosePeer()
   }
