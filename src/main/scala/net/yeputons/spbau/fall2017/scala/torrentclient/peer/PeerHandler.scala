@@ -86,12 +86,12 @@ abstract class PeerHandler(swarmHandler: ActorRef)
           log.debug(
             s"Piece $piece is now available; ${otherAvailable.size} in total")
 
-        case PieceRequest(pieceId) =>
-          log.debug(s"Peer requested $pieceId")
-        case PieceRequestCancel(pieceId) =>
-          log.debug(s"Peer cancelled request for $pieceId")
-        case PieceAvailable(pieceId, data) =>
-          log.debug(s"Received a $pieceId: ${data.length} bytes")
+        case BlockRequest(blockId) =>
+          log.debug(s"Peer requested $blockId")
+        case BlockRequestCancel(blockId) =>
+          log.debug(s"Peer cancelled request for $blockId")
+        case BlockAvailable(blockId, data) =>
+          log.debug(s"Received a $blockId: ${data.length} bytes")
       }
   }
 

@@ -41,20 +41,20 @@ object MessagesParsing {
         result.toByte
       }.toArray
       ByteString(5) ++ ByteString(bitmask)
-    case PieceRequest(pieceId) =>
+    case BlockRequest(blockId) =>
       ByteString.newBuilder
         .putByte(6)
-        .putPieceId(pieceId)
+        .putBlockId(blockId)
         .result()
-    case PieceAvailable(pieceId, data) =>
+    case BlockAvailable(blockId, data) =>
       ByteString.newBuilder
         .putByte(7)
-        .putPieceId(pieceId)
+        .putBlockId(blockId)
         .result() ++ data
-    case PieceRequestCancel(pieceId) =>
+    case BlockRequestCancel(blockId) =>
       ByteString.newBuilder
         .putByte(8)
-        .putPieceId(pieceId)
+        .putBlockId(blockId)
         .result()
   }
 
@@ -80,9 +80,9 @@ object MessagesParsing {
                   } yield 8 * position + i
               }.toSet
             )
-          case 6 => PieceRequest(buffer.getPieceId())
-          case 7 => PieceAvailable(buffer.getPieceId(), ByteString(buffer))
-          case 8 => PieceRequestCancel(buffer.getPieceId())
+          case 6 => BlockRequest(buffer.getBlockId())
+          case 7 => BlockAvailable(buffer.getBlockId(), ByteString(buffer))
+          case 8 => BlockRequestCancel(buffer.getBlockId())
           case _ =>
             throw PeerProtocolDecodeException("Unknown type id", message)
         }
@@ -99,21 +99,21 @@ object MessagesParsing {
       }
     }
 
-  private implicit class ByteStringPieceIdPutter(val builder: ByteStringBuilder)
+  private implicit class ByteStringBlockIdPutter(val builder: ByteStringBuilder)
       extends AnyVal {
-    def putPieceId(piece: PieceId): ByteStringBuilder =
+    def putBlockId(block: BlockId): ByteStringBuilder =
       builder
-        .putInt(piece.index)
-        .putInt(piece.begin)
-        .putInt(piece.length)
+        .putInt(block.index)
+        .putInt(block.begin)
+        .putInt(block.length)
   }
 
-  private implicit class ByteBufferPieceIdGetter(
+  private implicit class ByteBufferBlockIdGetter(
       val buffer: ByteBuffer
   ) extends AnyVal {
     //noinspection AccessorLikeMethodIsEmptyParen
     // Mimicking similar Java API
-    def getPieceId(): PieceId =
-      PieceId(buffer.getInt(), buffer.getInt(), buffer.getInt())
+    def getBlockId(): BlockId =
+      BlockId(buffer.getInt(), buffer.getInt(), buffer.getInt())
   }
 }

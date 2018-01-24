@@ -16,10 +16,10 @@ object PeerMessage {
   case object NotInterested extends PeerMessage
   case class HasNewPiece(pieceId: Int) extends PeerMessage
   case class HasPieces(hasPieces: Set[Int]) extends PeerMessage
-  case class PieceRequest(piece: PieceId) extends PeerMessage
-  case class PieceAvailable(piece: PieceId, data: ByteString)
+  case class BlockRequest(block: BlockId) extends PeerMessage
+  case class BlockAvailable(block: BlockId, data: ByteString)
       extends PeerMessage
-  case class PieceRequestCancel(piece: PieceId) extends PeerMessage
+  case class BlockRequestCancel(block: BlockId) extends PeerMessage
 
-  case class PieceId(index: Int, begin: Int, length: Int)
+  case class BlockId(index: Int, begin: Int, length: Int)
 }
