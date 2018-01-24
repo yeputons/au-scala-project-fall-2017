@@ -2,21 +2,29 @@ package net.yeputons.spbau.fall2017.scala.torrentclient.peer
 
 import java.security.MessageDigest
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated, Timers}
 import akka.util.ByteString
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler.{BlockDownloaded, DownloadBlock}
-import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler.{PeerForPieceRequest, PeerForPieceResponse}
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerHandler.{
+  BlockDownloaded,
+  DownloadBlock
+}
+import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PeerSwarmHandler.{
+  PeerForPieceRequest,
+  PeerForPieceResponse
+}
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.PieceDownloader._
 import net.yeputons.spbau.fall2017.scala.torrentclient.peer.protocol.PeerMessage.BlockId
 
 import scala.collection.mutable
+import scala.concurrent.duration._
 
 class PieceDownloader(peerSwarmHandler: ActorRef,
                       pieceId: Int,
                       pieceLength: Int,
                       pieceHash: Seq[Byte])
     extends Actor
-    with ActorLogging {
+    with ActorLogging
+    with Timers {
 
   val blocksCount = (pieceLength + BlockSize - 1) / BlockSize
   val blockIds = (0 until blocksCount).map { blockId =>
@@ -24,13 +32,14 @@ class PieceDownloader(peerSwarmHandler: ActorRef,
     val blockEnd = math.min(blockStart + BlockSize, pieceLength)
     BlockId(pieceId = pieceId, begin = blockStart, blockEnd - blockStart)
   }
-  val blocks: mutable.Seq[Option[ByteString]] = mutable.Seq.fill(blocksCount)(Option.empty[ByteString])
+  val blocks: mutable.Seq[Option[ByteString]] =
+    mutable.Seq.fill(blocksCount)(Option.empty[ByteString])
 
   var peer = Option.empty[ActorRef]
 
   override def preStart(): Unit = {
-    choosePeer()
     context.watch(peerSwarmHandler)
+    choosePeer()
   }
 
   override def receive: Receive = {
@@ -38,11 +47,16 @@ class PieceDownloader(peerSwarmHandler: ActorRef,
       throw new IllegalStateException("PeerSwarmHandler terminated")
     case Terminated(terminatedPeer) =>
       if (peer.isDefined && peer.get == terminatedPeer) {
-        log.debug(s"Peer died, choosing another one")
+        log.debug("Peer died, choosing another one")
         choosePeer()
       } else {
-        log.debug(s"Unexpected peer terminated message: got $terminatedPeer, my current peer is $peer")
+        log.debug(
+          s"Unexpected peer terminated message: got $terminatedPeer, my current peer is $peer")
       }
+    case NoBlocksTimedOut =>
+      log.debug(
+        "No blocks received from the peer for a while, choosing another one")
+      choosePeer()
     case PeerForPieceResponse(`pieceId`, newPeer) =>
       peer = Some(newPeer)
       log.debug(s"Will try downloading piece $pieceId from $newPeer")
@@ -54,9 +68,13 @@ class PieceDownloader(peerSwarmHandler: ActorRef,
     case BlockDownloaded(blockId @ BlockId(`pieceId`, begin, length), data) =>
       val id = begin / BlockSize
       if (blockId != blockIds(id)) {
-        throw new IllegalArgumentException(s"Invalid BlockDownloaded message: expected ${blockIds(id)}, got $blockId")
+        throw new IllegalArgumentException(
+          s"Invalid BlockDownloaded message: expected ${blockIds(id)}, got $blockId")
       }
       blocks(id) = Some(data)
+      timers.startSingleTimer(NoBlocksTimeoutTimer,
+                              NoBlocksTimedOut,
+                              NoBlocksTimeout)
       checkBlocks()
   }
 
@@ -67,12 +85,13 @@ class PieceDownloader(peerSwarmHandler: ActorRef,
     val digest = MessageDigest.getInstance("SHA-1")
     blocks.foreach {
       case Some(data) => digest.update(data.asByteBuffer)
-      case None => require(false)
+      case None       => require(false)
     }
     val realHash = digest.digest().toSeq
     if (pieceHash == realHash) {
       log.debug(s"Successfully downloaded piece $pieceId")
-      context.parent ! PieceDownloaded(pieceId, blocks.map(_.get).reduce(_ ++ _))
+      context.parent ! PieceDownloaded(pieceId,
+                                       blocks.map(_.get).reduce(_ ++ _))
       context.stop(self)
     }
     log.warning(
@@ -83,9 +102,12 @@ class PieceDownloader(peerSwarmHandler: ActorRef,
   }
 
   def choosePeer(): Unit = {
-    log.debug("Choosing new peer for downloading piece $pieceId")
+    log.debug(s"Choosing new peer for downloading piece $pieceId")
     peer = None
     peerSwarmHandler ! PeerForPieceRequest(pieceId)
+    timers.startSingleTimer(NoBlocksTimeoutTimer,
+                            NoBlocksTimedOut,
+                            NoBlocksTimeout)
   }
 
   override def unhandled(message: Any): Unit = {
@@ -96,6 +118,7 @@ class PieceDownloader(peerSwarmHandler: ActorRef,
 
 object PieceDownloader {
   val BlockSize: Int = 1 << 14
+  val NoBlocksTimeout = 10.seconds
 
   case class PieceDownloaded(pieceId: Int, data: ByteString)
 
@@ -105,4 +128,7 @@ object PieceDownloader {
             pieceHash: Seq[Byte]): Props =
     Props(
       new PieceDownloader(peerSwarmHandler, pieceId, pieceLength, pieceHash))
+
+  case object NoBlocksTimeoutTimer
+  case object NoBlocksTimedOut
 }
