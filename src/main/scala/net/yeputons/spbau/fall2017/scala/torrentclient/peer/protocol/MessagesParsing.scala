@@ -49,7 +49,8 @@ object MessagesParsing {
     case BlockAvailable(blockId, data) =>
       ByteString.newBuilder
         .putByte(7)
-        .putBlockId(blockId)
+        .putInt(blockId.pieceId)
+        .putInt(blockId.begin)
         .result() ++ data
     case BlockRequestCancel(blockId) =>
       ByteString.newBuilder
@@ -81,7 +82,12 @@ object MessagesParsing {
               }.toSet
             )
           case 6 => BlockRequest(buffer.getBlockId())
-          case 7 => BlockAvailable(buffer.getBlockId(), ByteString(buffer))
+          case 7 =>
+            val pieceId = buffer.getInt()
+            val blockStart = buffer.getInt()
+            val blockLength = buffer.remaining()
+            BlockAvailable(BlockId(pieceId, blockStart, blockLength),
+                           ByteString(buffer))
           case 8 => BlockRequestCancel(buffer.getBlockId())
           case _ =>
             throw PeerProtocolDecodeException("Unknown type id", message)
